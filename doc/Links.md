@@ -9,3 +9,4 @@ date: 2021-05-16T17:37
 * [Zero to Rust on RISC-V](https://softsourceconsulting.github.io/rst/from-zero-to-rust-on-riscv.html)
 * [Rust Embedded / RISC-V](https://github.com/rust-embedded/riscv)
 * [RISC-V OS on Rust](https://osblog.stephenmarz.com/index.html)
+* [RIS-V boot proccess](https://www.mind.be/osseu19/2019-10-29-RISC-V-boot-process.html)
