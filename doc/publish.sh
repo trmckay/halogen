@@ -1,10 +1,16 @@
 #!/bin/bash
 
+set -e
+
 PWD=$(pwd)
 GIT_ROOT=$(git rev-parse --show-toplevel)
 
-set -x
-set -e
+echo "Commit changes in $GIT_ROOT/doc? [Y/n]"
+read -n1 yn
+case $yn in
+    [Nn]* ) exit;;
+    * ) git commit "$GIT_ROOT/doc"
+esac
 
 echo Updating using Neuron Docker.
 echo Close when done.
