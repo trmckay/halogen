@@ -2,7 +2,7 @@
 date: 2021-05-16T16:55
 ---
 
-# r6kernel
+# RISC-V Rust (rVr) Kernel
 
 * [[About]]
 * [[Development]]

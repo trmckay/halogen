@@ -1,0 +1,12 @@
+# Based off docs @ https://neuron.zettel.page/docker
+# docker run --rm -t -i -p 8080:8080 -v $(pwd):/notes sridca/neuron neuron gen -ws 0.0.0.0:8080
+
+services:
+  web:
+    container_name: "rVr-kernel-docs"
+    image: sridca/neuron
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./markdown:/notes
+    command: neuron gen -ws 0.0.0.0:8080
