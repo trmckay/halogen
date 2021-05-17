@@ -3,6 +3,9 @@
 PWD=$(pwd)
 GIT_ROOT=$(git rev-parse --show-toplevel)
 
+set -x
+set -e
+
 echo Updating using Neuron Docker.
 echo Close when done.
 
@@ -12,6 +15,6 @@ docker-compose up
 
 echo "Publishing changes to gh-pages branch."
 cd "$GIT_ROOT" || exit 1
-git subtree push --prefix "$GIT_ROOT/doc/.neuron/output" origin gh-pages
+git subtree push --prefix "doc/.neuron/output" origin gh-pages
 
 cd "$PWD" || exit 1
