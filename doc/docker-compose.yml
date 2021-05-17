@@ -8,5 +8,5 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./markdown:/notes
+      - ./:/notes
     command: neuron gen -ws 0.0.0.0:8080
