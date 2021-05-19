@@ -4,7 +4,7 @@
         "neuronignore",
         "links",
         "uptree",
-        "dirtree"
+        "dirtree",
     ],
     theme = "red"
 }
