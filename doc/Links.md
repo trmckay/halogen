@@ -7,6 +7,7 @@
 * [Free-standing Rust binary](https://os.phil-opp.com/freestanding-rust-binary/)
 * [Rust Cheat-sheet](https://cheats.rs/)
 * [Rust Embedded Book](https://docs.rust-embedded.org/book/)
+* [riscv-rust-quickstart](https://github.com/riscv-rust/riscv-rust-quickstart)
 
 ## RISC-V resources
 * [riscv Rust crate](https://docs.rs/riscv/0.6.0/riscv/)
@@ -16,5 +17,6 @@
 * [RISC-V OS on Rust](https://osblog.stephenmarz.com/index.html)
 * [RISC-V boot proccess](https://www.mind.be/osseu19/2019-10-29-RISC-V-boot-process.html)
 * [Booting RISC-V on QEMU](https://jborza.com/emulation/2021/04/03/running-riscv-qemu.html)
+* [riscv-probe](https://github.com/michaeljclark/riscv-probe)
 
 ## OS resources

@@ -14,3 +14,7 @@
 * Learned how to use a linker script with Cargo
 * "Hello, World" in Rust on the Otter
 * Add some scripts to repo to help with version control
+
+## 2021-05-19
+
+* Generalize Rust build info for rv64gc

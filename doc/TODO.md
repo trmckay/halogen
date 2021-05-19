@@ -1,9 +1,9 @@
 # TODO
 
-* [x] Choose language -> Rust
+* [x] Choose language
 * [ ] Narrow down target architecture
     * rv32i, rv64gc, etc.
     * Hardware or QEMU only?
-* [ ] Run arbitrary code in QEMU
-* [ ] Basic bootloader (execute a program)
+* [ ] Run baremetal code in QEMU
+* [ ] Basic bootloader
 * [ ] Call Rust from bootloader
