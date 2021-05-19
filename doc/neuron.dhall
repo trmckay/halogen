@@ -6,5 +6,5 @@
         "uptree",
         "dirtree",
     ],
-    theme = "red"
+    theme = "red",
 }
