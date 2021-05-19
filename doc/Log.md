@@ -13,3 +13,4 @@
 * Added more links
 * Learned how to use a linker script with Cargo
 * "Hello, World" in Rust on the Otter
+* Add some scripts to repo to help with version control
