@@ -18,3 +18,5 @@
 ## 2021-05-19
 
 * Generalize Rust build info for rv64gc
+* Prototype bootloader
+* Hello, World from Rust to QEMU UART

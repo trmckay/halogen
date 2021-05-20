@@ -24,6 +24,7 @@
 ## OS resources
 
 * [OSDev Wiki](https://wiki.osdev.org)
+* [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/)
 
 ## Fun/interesting
 
