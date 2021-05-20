@@ -9,16 +9,31 @@ pub mod mmio;
 pub mod panic;
 pub mod uart;
 
+#[macro_export]
+macro_rules! print
+{
+	($($args:tt)+) => ({
+			use core::fmt::Write;
+			let _ = write!(crate::uart::Uart::new(uart::UART_MMIO_ADDR), $($args)+);
+	});
+}
+
+#[macro_export]
+macro_rules! println
+{
+	() => ({
+		print!("\n")
+	});
+	($fmt:expr) => ({
+		print!(concat!($fmt, "\n"))
+	});
+	($fmt:expr, $($args:tt)+) => ({
+		print!(concat!($fmt, "\n"), $($args)+)
+	});
+}
+
 #[no_mangle]
 pub extern "C" fn kernel() {
-    let mut uart = uart::Uart::new(uart::UART_MMIO_ADDR);
-    uart.init();
-
-    let str = b"Hello, world.\n";
-
-    for c in str.iter() {
-        uart.write(*c);
-    }
-
+    println!("Hello, world.");
     loop {}
 }

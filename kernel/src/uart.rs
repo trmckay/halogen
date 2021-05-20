@@ -1,8 +1,9 @@
 use crate::{mmio_rd, mmio_wr};
+use core::fmt::{Error, Write};
 
 // Device driver for NS16550A UART module provided by QEMU.
 // See the specifications here: https://mth.st/blog/riscv-qemu/AN-491.pdf
-//
+
 pub const UART_MMIO_ADDR: usize = 0x10000000;
 
 pub struct Uart {
@@ -23,15 +24,24 @@ impl Uart {
         }
     }
 
-    pub fn read(&self) -> u8 {
+    pub fn read_byte(&self) -> u8 {
         unsafe {
             return mmio_rd!(self.mmio_addr);
         }
     }
 
-    pub fn write(&mut self, byte: u8) {
+    pub fn write_byte(&mut self, byte: u8) {
         unsafe {
             mmio_wr!(self.mmio_addr, byte);
         }
+    }
+}
+
+impl Write for Uart {
+    fn write_str(&mut self, s: &str) -> Result<(), Error> {
+        for c in s.bytes() {
+            self.write_byte(c);
+        }
+        Ok(())
     }
 }
