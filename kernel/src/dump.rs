@@ -8,7 +8,7 @@ pub fn print_dump(base: usize, size: usize) {
     for offset in 0..size {
         let addr = base + offset;
 
-        if offset % 16 == 0 && offset != 0 {
+        if (offset % 16 == 0 || offset == size - 1) && offset != 0 {
             print!("{:08x}..{:08x}: ", addr, addr + 15);
             for (i, c) in buf.iter().enumerate() {
                 if i % 4 == 0 {
@@ -17,16 +17,20 @@ pub fn print_dump(base: usize, size: usize) {
                 print!("{:02x}", *c);
             }
 
-            print!("  ");
+            print!(" ");
 
-            for c in buf.iter() {
+            for (i, c) in buf.iter().enumerate() {
+                if i % 4 == 0 {
+                    print!(" ");
+                }
+
                 print!(
                     "{}",
                     match *c {
                         0x20..0x7e => *c as char,
                         _ => '.',
                     }
-                )
+                );
             }
 
             println!();
