@@ -1,2 +1,4 @@
 doc/.neuron
 kernel/target
+.vscode
+.vim
