@@ -1,10 +1,18 @@
+# RISC-V rv64gc bootloader
+# General behavior is this:
+#   1. Select the correct hart to boot with. RISC-V requires 1.
+#   2. Set up the global pointer
+#   3. Initialize the BSS section.
+#   4. Initialize the stack pointer.
+#   5. 
+
 .option norvc
 .section .data
 
 .section .text.init
+
 .global _start
 _start:
-
 # Boot with hart one.
     csrr  t0, mhartid
     bnez  t0, SLEEP
