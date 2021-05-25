@@ -1,39 +1,39 @@
-#![no_std] // Disable the standard library.
-#![no_main] // We are going to define the entrypoint manually.
-#![feature(panic_info_message, global_asm, asm)]
+#![no_std]
+#![no_main]
+#![feature(panic_info_message, global_asm, asm, exclusive_range_pattern)]
 
 global_asm!(include_str!("boot/boot.s"));
 global_asm!(include_str!("boot/trap.s"));
 
+// Private modules.
+mod panic;
+
+// Public modules.
+pub mod dump;
 pub mod mmio;
-pub mod panic;
 pub mod uart;
 
-#[macro_export]
-macro_rules! print
-{
-    ($($args:tt)+) => ({
-        use core::fmt::Write;
-        let _ = write!(crate::uart::Uart::new(uart::UART_MMIO_ADDR), $($args)+);
-    });
-}
-
-#[macro_export]
-macro_rules! println
-{
-    () => ({
-        print!("\n")
-    });
-    ($fmt:expr) => ({
-        print!(concat!($fmt, "\n"))
-    });
-    ($fmt:expr, $($args:tt)+) => ({
-        print!(concat!($fmt, "\n"), $($args)+)
-    });
-}
-
 #[no_mangle]
-pub extern "C" fn kernel() {
-    println!("Hello, world.");
-    loop {}
+pub extern "C" fn kernel() -> ! {
+    println!("Initialize kernel.\n");
+
+    let mut uart = uart::Uart::new(uart::UART_MMIO_ADDR);
+    uart.init();
+
+    // Nothing crazy here, just a read-print loop.
+    loop {
+        let c = uart.read_byte();
+        match c {
+            // Null
+            0x00 => (),
+            // C-c || C-d
+            0x03 | 0x04 => panic!(),
+            // Return
+            0x0D => println!(),
+            // Backspace
+            0x7F => print!("{} {}", 0x08 as char, 0x08 as char),
+            // Everything else
+            _ => print!("{}", c as char),
+        }
+    }
 }
