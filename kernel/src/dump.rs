@@ -17,13 +17,9 @@ pub fn print_dump(base: usize, size: usize) {
                 print!("{:02x}", *c);
             }
 
-            print!(" ");
+            print!("  ");
 
-            for (i, c) in buf.iter().enumerate() {
-                if i % 4 == 0 {
-                    print!(" ");
-                }
-
+            for c in buf.iter() {
                 print!(
                     "{}",
                     match *c {
