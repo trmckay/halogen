@@ -1,4 +1,4 @@
-# trap.S
+# trap.s
 # Assembly-level trap handler.
 
 .section .text

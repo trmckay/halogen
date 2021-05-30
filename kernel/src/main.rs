@@ -9,9 +9,8 @@ global_asm!(include_str!("boot/trap.s"));
 mod panic;
 
 // Public modules.
-pub mod dump;
-pub mod mmio;
-pub mod uart;
+pub mod driver;
+pub mod util;
 
 #[no_mangle]
 pub extern "C" fn kernel() -> ! {

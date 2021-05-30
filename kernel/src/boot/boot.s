@@ -4,7 +4,6 @@
 #   2. Set up the global pointer
 #   3. Initialize the BSS section.
 #   4. Initialize the stack pointer.
-#   5. 
 
 .option norvc
 .section .data

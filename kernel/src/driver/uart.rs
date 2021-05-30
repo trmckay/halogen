@@ -51,8 +51,8 @@ macro_rules! print
 {
     ($($args:tt)+) => ({
         use core::fmt::Write;
-        let _ = write!(crate::uart::Uart::new(
-            crate::uart::UART_MMIO_ADDR), $($args)+
+        let _ = write!(crate::driver::uart::Uart::new(
+            crate::driver::uart::UART_MMIO_ADDR), $($args)+
         );
     });
 }
