@@ -7,7 +7,7 @@ Kernel for RISC-V in Rust.
 * These packages on Fedora Linux:
 
     ```bash
-    sudo dnf install utoconf automake libmpc-devel mpfr-devel gmp-devel \
+    sudo dnf install autoconf automake libmpc-devel mpfr-devel gmp-devel \
         gawk bison flex texinfo patchutils gcc gcc-c++ zlib-devel \
         expat-devel git qemu-system-riscv
     ```
