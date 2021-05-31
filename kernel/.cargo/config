@@ -1,6 +1,6 @@
 [build]
 target = "riscv64gc-unknown-none-elf"
-rustflags = ['-Clink-arg=-Tqemu.ld']
+rustflags = ["-Clink-arg=-Tqemu.ld", "--cfg", "machine=\"qemu\""]
 
 [target.riscv64gc-unknown-none-elf]
 runner = """qemu-system-riscv64 \

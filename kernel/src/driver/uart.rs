@@ -2,16 +2,21 @@ use crate::{mmio_rd, mmio_wr};
 use core::fmt::{Error, Write};
 
 // Device driver for NS16550A UART module provided by QEMU.
-// See the specifications here: https://mth.st/blog/riscv-qemu/AN-491.pdf
-
-pub const UART_MMIO_ADDR: usize = 0x10000000;
+#[cfg(machine = "qemu")]
+pub const DEFAULT_UART_MMIO_ADDR: usize = 0x10000000;
 
 pub struct Uart {
     mmio_addr: usize,
 }
 
 impl Uart {
-    pub fn new(mmio_addr: usize) -> Uart {
+    pub fn new() -> Uart {
+        Uart {
+            mmio_addr: DEFAULT_UART_MMIO_ADDR,
+        }
+    }
+
+    pub fn from_addr(mmio_addr: usize) -> Uart {
         Uart { mmio_addr }
     }
 
@@ -46,13 +51,18 @@ impl Write for Uart {
     }
 }
 
+impl Default for Uart {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[macro_export]
 macro_rules! print
 {
     ($($args:tt)+) => ({
         use core::fmt::Write;
-        let _ = write!(crate::driver::uart::Uart::new(
-            crate::driver::uart::UART_MMIO_ADDR), $($args)+
+        let _ = write!(crate::driver::uart::Uart::new(), $($args)+
         );
     });
 }
