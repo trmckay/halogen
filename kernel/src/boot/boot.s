@@ -27,8 +27,8 @@ _start:
     la    a1, _bss_end
     bgeu  a0, a1, BSS_INIT_DONE
 BSS_INIT_LOOP:
-    sd    x0, (a0)
-    addi  a0, a0, 8
+    sw    x0, (a0)
+    addi  a0, a0, 4
     bltu  a0, a1, BSS_INIT_LOOP
 BSS_INIT_DONE:
 
