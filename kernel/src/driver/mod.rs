@@ -1,6 +1,6 @@
 pub mod uart;
 
-pub use uart::Uart;
+pub use uart::*;
 
 #[macro_export]
 macro_rules! mmio_wr {
