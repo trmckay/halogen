@@ -1,6 +1,0 @@
-# Ignore top-level dotfiles and dotdirs
-.*/**
-
-readme.md
-docker-compose.yml
-publish.sh
