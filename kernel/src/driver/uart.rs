@@ -2,15 +2,20 @@ use crate::{mmio_rd, mmio_wr};
 use core::fmt::{Error, Write};
 
 pub trait UartDriver {
+    /// Create an instance of the UART driver and perform any initialization
+    /// required by the device.
     fn new() -> Self;
 
+    /// Read a single byte from the UART device.
     fn read_byte(&self) -> u8;
 
+    /// Write a single byte to the UART device.
     fn write_byte(&mut self, byte: u8);
 }
 
 pub const QEMU_UART_ADDR: usize = 0x10000000;
 
+/// Driver for the UART module in the QEMU virt machine.
 pub struct UartQemu {
     addr: usize,
 }
