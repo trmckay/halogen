@@ -40,8 +40,6 @@ BSS_INIT_DONE:
     li    t0, 0b110010001000
 #                   ^   ^
 #           Enable interrupts
-
-# Woops, still gotta do this to fully enable interrupts.
     csrw  mstatus, t0
 
 # Go here (to the kernel) when we're done.
@@ -61,5 +59,3 @@ BSS_INIT_DONE:
 SLEEP:
     wfi
     j SLEEP
-
-# It took me three days to write these 55 lines <]:)

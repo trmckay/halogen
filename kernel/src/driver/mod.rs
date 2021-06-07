@@ -1,5 +1,6 @@
 pub mod uart;
 
+pub use uart::UartDriver;
 pub use uart::*;
 
 #[macro_export]
