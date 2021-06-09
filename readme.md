@@ -4,22 +4,7 @@ Kernel for RISC-V in Rust.
 
 ## Requirements
 
-* These packages on Fedora Linux:
-
-    ```bash
-    sudo dnf install autoconf automake libmpc-devel mpfr-devel gmp-devel \
-        gawk bison flex texinfo patchutils gcc gcc-c++ zlib-devel \
-        expat-devel git qemu-system-riscv
-    ```
-
-* These packages on Ubuntu Linux:
-
-    ```bash
-    sudo apt install autoconf automake autotools-dev curl libmpc-dev \
-        libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf \
-        libtool patchutils bc zlib1g-dev libexpat-dev git libglib2.0-dev \
-        libpixman-1-dev
-    ```
+* `qemu-system-riscv`
 
 * [riscv-gnu-toolchain](https://github.com/riscv/riscv-gnu-toolchain)
 
@@ -29,16 +14,19 @@ Kernel for RISC-V in Rust.
     ./configure --prefix="$HOME/.local/opt/riscv/rv64gc" --with-arch=rv64gc
     make linux
     ```
+    
+* Rust
 
-* `rustup`
+## Setup
 
-    ```bash
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    rustup default nightly
-    rustup toolchain add riscv64gc-unknown-elf
-    ```
+```
+git clone git@github.com:trmckay/rVr-kernel.git
+cd rVr-kernel
+rustup override set nightly
+rustup target add riscv64gc-unknown-none-elf
+```
 
-## Settings for `rust-analyzer`
+### Extra settings for `rust-analyzer`
 
 `settings.json`:
 ```json
