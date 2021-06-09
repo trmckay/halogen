@@ -4,6 +4,8 @@ Kernel for RISC-V in Rust.
 
 ## Requirements
 
+* Rust
+
 * `qemu-system-riscv`
 
 * [riscv-gnu-toolchain](https://github.com/riscv/riscv-gnu-toolchain)
@@ -14,8 +16,20 @@ Kernel for RISC-V in Rust.
     ./configure --prefix="$HOME/.local/opt/riscv/rv64gc" --with-arch=rv64gc
     make linux
     ```
-    
-* Rust
+
+### Build `qemu-system-riscv` on Ubuntu
+
+```bash
+sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
+                 gawk build-essential bison flex texinfo gperf libtool patchutils bc \
+                 zlib1g-dev libexpat-dev git
+git clone https://github.com/qemu/qemu
+cd qemu
+git checkout v5.0.0
+./configure --target-list=riscv64-softmmu
+make -j $(nproc)
+sudo make install
+```
 
 ## Setup
 
