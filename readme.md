@@ -21,8 +21,8 @@ Kernel for RISC-V in Rust.
 
 ```bash
 sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
-                 gawk build-essential bison flex texinfo gperf libtool patchutils bc \
-                 zlib1g-dev libexpat-dev git
+    gawk build-essential bison flex texinfo gperf libtool patchutils bc \
+    zlib1g-dev libexpat-dev git libpixman-1-dev libglib2.0-dev
 git clone https://github.com/qemu/qemu
 cd qemu
 git checkout v5.0.0
