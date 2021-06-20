@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+rstcheck = "*"
+black = "==19.10b0"
+flake8 = "*"
+doc8 = "*"
+
+[packages]
+sphinxcontrib-mermaid = "*"
+Sphinx = "3.2.1"
+sphinx-rtd-theme = "*"
+
+[requires]
+python_version = "3.8.2"
