@@ -15,6 +15,8 @@ An embedded OS for RISC-V made with Rust.
   cd riscv-gnu-toolchain
   ./configure --prefix="$HOME/.local/opt/riscv/rv64gc" --with-arch=rv64gc
   make linux
+  # Optional, add to PATH
+  echo 'export PATH=$PATH:$HOME/.local/opt/riscv/rv64gc' | tee -a ~/.bashrc ~/.zshrc
   ```
 
 ### Build `qemu-system-riscv` on Ubuntu
