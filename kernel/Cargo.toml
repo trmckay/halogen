@@ -1,5 +1,5 @@
 [package]
-name = "rvr-kernel"
+name = "pentoxide"
 version = "0.1.0"
 authors = ["Trevor McKay <tm@trmckay.com>"]
 edition = "2018"

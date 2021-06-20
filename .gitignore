@@ -1,5 +1,6 @@
 doc/.neuron
 kernel/target
+kernel/Cargo.lock
 .vscode
 .vim
 doc/build

@@ -1,21 +1,21 @@
-# rVr kernel
+# Pentoxide
 
-Kernel for RISC-V in Rust.
+An embedded OS for RISC-V made with Rust.
 
 ## Requirements
 
-* Rust
+* A Rust toolchain
 
 * `qemu-system-riscv`
 
 * [riscv-gnu-toolchain](https://github.com/riscv/riscv-gnu-toolchain)
 
-    ```bash
-    git clone https://github.com/riscv/riscv-gnu-toolchain
-    cd riscv-gnu-toolchain
-    ./configure --prefix="$HOME/.local/opt/riscv/rv64gc" --with-arch=rv64gc
-    make linux
-    ```
+  ```bash
+  git clone https://github.com/riscv/riscv-gnu-toolchain
+  cd riscv-gnu-toolchain
+  ./configure --prefix="$HOME/.local/opt/riscv/rv64gc" --with-arch=rv64gc
+  make linux
+  ```
 
 ### Build `qemu-system-riscv` on Ubuntu
 
@@ -34,8 +34,8 @@ sudo make install
 ## Setup
 
 ```
-git clone git@github.com:trmckay/rVr-kernel.git
-cd rVr-kernel
+git clone git@github.com:trmckay/pentoxide.git
+cd pentoxide
 rustup override set nightly
 rustup target add riscv64gc-unknown-none-elf
 ```

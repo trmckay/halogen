@@ -5,7 +5,7 @@
 SAVED_DIR=$(pwd)
 GIT_ROOT=$(git rev-parse --show-toplevel)
 OBJDUMP="riscv64-unknown-linux-gnu-objdump"
-BINARY="$GIT_ROOT/kernel/target/riscv64gc-unknown-none-elf/debug/rvr-kernel"
+BINARY="$GIT_ROOT/kernel/target/riscv64gc-unknown-none-elf/debug/pentoxide"
 
 cd "$GIT_ROOT"/kernel || exit 1
 cargo build
