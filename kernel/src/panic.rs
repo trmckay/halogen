@@ -6,11 +6,13 @@ fn panic(_info: &PanicInfo) -> ! {
     let pc: usize;
     let sp: usize;
     let gp: usize;
+    let fp: usize;
 
     // Save some special registers.
     unsafe {
         asm!("mv {}, ra", out(reg) pc);
         asm!("mv {}, sp", out(reg) sp);
+        asm!("mv {}, fp", out(reg) fp);
         asm!("mv {}, gp", out(reg) gp);
     }
 
@@ -19,6 +21,7 @@ fn panic(_info: &PanicInfo) -> ! {
 
     println!("ra = 0x{:08X}", pc);
     println!("sp = 0x{:08X}", sp);
+    println!("fp = 0x{:08X}", fp);
     println!("gp = 0x{:08X}\n", gp);
 
     // Dump the stack.
