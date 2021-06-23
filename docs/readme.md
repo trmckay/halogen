@@ -10,5 +10,5 @@ $ make <pdf|html|etc.>
 
 ```bash
 $ docker build -t sphinx .
-$ docker run -v $(pwd):/sphinx sphinx make <pdf|html|etc.>
+$ docker run -v $(pwd)/sphinx:/sphinx sphinx make <pdf|html|etc.>
 ```
