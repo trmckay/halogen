@@ -2,47 +2,27 @@
 
 An embedded OS for RISC-V made with Rust.
 
-## Requirements
+
+## Run
+
+### Docker
+
+Make sure you have Docker installed and running. Then run `make docker-runner`.
+
+### Baremetal
+
+Make sure you have:
 
 * A Rust toolchain
-
 * `qemu-system-riscv`
 
-* [riscv-gnu-toolchain](https://github.com/riscv/riscv-gnu-toolchain)
+Run once: `make init`
 
-  ```bash
-  git clone https://github.com/riscv/riscv-gnu-toolchain
-  cd riscv-gnu-toolchain
-  ./configure --prefix="$HOME/.local/opt/riscv/rv64gc" --with-arch=rv64gc
-  make linux
-  # Optional, add to PATH
-  echo 'export PATH=$PATH:$HOME/.local/opt/riscv/rv64gc' | tee -a ~/.bashrc ~/.zshrc
-  ```
+Then run: `make run`
 
-### Build `qemu-system-riscv` on Ubuntu
+## Extras
 
-```bash
-sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
-    gawk build-essential bison flex texinfo gperf libtool patchutils bc \
-    zlib1g-dev libexpat-dev git libpixman-1-dev libglib2.0-dev
-git clone https://github.com/qemu/qemu
-cd qemu
-git checkout v5.0.0
-./configure --target-list=riscv64-softmmu
-make -j $(nproc)
-sudo make install
-```
-
-## Setup
-
-```
-git clone git@github.com:trmckay/pentoxide.git
-cd pentoxide
-rustup override set nightly
-rustup target add riscv64gc-unknown-none-elf
-```
-
-### Extra settings for `rust-analyzer`
+### Settings for `rust-analyzer`
 
 `settings.json`:
 ```json
