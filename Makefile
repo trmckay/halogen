@@ -8,6 +8,11 @@ SPHINX_DIR=`pwd`/docs
 
 # === BAREMETAL KERNEL RULES ===
 
+init:
+	cd $(CARGO_PROJ)
+	rustup override set nightly
+	rustup target add riscv64gc-unknown-none-elf
+
 build:
 	(cd $(CARGO_PROJ) && cargo build)
 
