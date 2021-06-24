@@ -2,12 +2,19 @@
 
 An embedded OS for RISC-V made with Rust.
 
+## Clone and configure
+
+```
+git clone git@github.com:trmckay/pentoxide.git
+cd pentoxide
+make init
+```
 
 ## Run
 
 ### Docker
 
-Make sure you have Docker installed and running. Then run `make docker-runner`.
+Make sure you have Docker installed and running. Then run `make run-docker`.
 
 ### Baremetal
 
@@ -16,9 +23,11 @@ Make sure you have:
 * A Rust toolchain
 * `qemu-system-riscv`
 
-Run once: `make init`
+Then run: `make run`.
 
-Then run: `make run`
+## Documentation
+
+The preferred method for building uses Docker, use it with `make docs`.
 
 ## Extras
 

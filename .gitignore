@@ -2,4 +2,4 @@ kernel/target
 kernel/Cargo.lock
 .vscode
 .vim
-docs/sphinx/build
+docs/build

@@ -1,5 +1,5 @@
 RUNNER_IMG_NAME=pentoxide-runner
-SPHINX_IMG_NAME=sphinxdoc/sphinx-latexpdf
+SPHINX_IMG_NAME=sphinxdoc/sphinx
 DOCKERFILE=kernel/Dockerfile
 DOCKER_DIR=`dirname $(DOCKERFILE)`
 CARGO_PROJ=`pwd`/kernel
@@ -10,8 +10,11 @@ SPHINX_DIR=`pwd`/docs
 
 init:
 	cd $(CARGO_PROJ)
+	# configure rust toolchain
 	rustup override set nightly
 	rustup target add riscv64gc-unknown-none-elf
+	# install pre-commit hooks
+	ln -svf `pwd`/scripts/pre-commit.sh .git/hooks/pre-commit
 
 build:
 	(cd $(CARGO_PROJ) && cargo build)
@@ -28,45 +31,31 @@ clean:
 
 # === DOCKER KERNEL RULES ===
 
-docker-runner-img:
+run-img-docker:
 	sudo docker build -t $(RUNNER_IMG_NAME) $(DOCKER_DIR)
 
-docker-runner: docker-runner-img
+run-docker: run-img-docker
 	sudo docker run \
 		--rm \
 		--mount type=bind,source=$(CARGO_PROJ),target=/cargo \
 		$(RUNNER_IMG_NAME)
 
-docker-runner-clean: docker-runner-img
+clean-docker: run-img-docker
 	sudo docker run \
 		--rm \
 		--mount type=bind,source=$(CARGO_PROJ),target=/cargo \
 		$(RUNNER_IMG_NAME) clean
 
 
-# === BAREMETAL DOCS RULES ===
+# === DOCS RULES ===
 
 docs:
-	(cd $(SPHINX_DIR) && make latexpdf)
-	(cd $(SPHINX_DIR) && make html)
-
-docs-clean:
-	(cd $(SPHINX_DIR) && make clean)
-
-
-# === DOCKER DOCS RULES ===
-
-docker-docs:
 	sudo docker run \
 		--rm \
 		--mount type=bind,source=$(SPHINX_DIR),target=/docs \
 		$(SPHINX_IMG_NAME) make html
-	sudo docker run \
-		--rm \
-		--mount type=bind,source=$(SPHINX_DIR),target=/docs \
-		$(SPHINX_IMG_NAME) make latexpdf
 
-docker-docs-clean:
+docs-clean:
 	sudo docker run \
 		--rm \
 		--mount type=bind,source=$(SPHINX_DIR),target=/docs \
