@@ -33,13 +33,26 @@ The preferred method for building uses Docker, use it with `make docs`.
 
 ### Settings for `rust-analyzer`
 
-`settings.json`:
-```json
-{
-    "rust-analyzer.checkonsave.alltargets": false,
-    "rust-analyzer.checkonsave.extraargs": [
-        "--target",
-        "riscv64gc-unknown-none-elf"
-    ]
-}
-```
+`rust-analyzer` may complain about missing components for `riscv64gc`. To only lint
+the targets we care about add one or both of the following configurations:
+
+* For VSCode in `.vscode/settings.json`:
+
+  ```json
+  {
+      "rust-analyzer.checkonsave.alltargets": false,
+      "rust-analyzer.checkonsave.extraargs": [
+          "--target",
+          "riscv64gc-unknown-none-elf"
+      ]
+  }
+  ```
+
+* For `coc.nvim` in `.vim/coc-settings.json`:
+
+  ```json
+  {
+      "rust.target": "riscv64gc-unknown-none-elf",
+      "rust.all_targets": false
+  }
+  ```
