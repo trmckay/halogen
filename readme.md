@@ -27,14 +27,17 @@ Then run: `make run`.
 
 ## Documentation
 
-The preferred method for building uses Docker, use it with `make docs`.
+The documentation is continually built and available at
+[https://www.trmckay.com/pentoxide](https://www.trmckay.com/pentoxide/index.html).
+
+The preferred method for building locally is with Docker. Use it with `make docs`.
 
 ## Extras
 
 ### Settings for `rust-analyzer`
 
 `rust-analyzer` may complain about missing components for `riscv64gc`. To only lint
-the targets we care about add one or both of the following configurations:
+the targets we care about, add one or both of the following configurations:
 
 * For VSCode in `.vscode/settings.json`:
 
