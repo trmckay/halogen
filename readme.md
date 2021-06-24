@@ -27,7 +27,7 @@ Then run: `make run`.
 
 ## Documentation
 
-The documentation is continually built and available at
+The documentation is continuously built and available at
 [https://www.trmckay.com/pentoxide](https://www.trmckay.com/pentoxide/index.html).
 
 The preferred method for building locally is with Docker. Use it with `make docs`.
