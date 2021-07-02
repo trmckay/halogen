@@ -14,7 +14,7 @@ init:
 	rustup override set nightly
 	rustup target add riscv64gc-unknown-none-elf
 	# install pre-commit hooks
-	ln -svf `pwd`/scripts/pre-commit.sh .git/hooks/pre-commit
+	eval `pwd`/scripts/install_hooks.sh
 
 build:
 	(cd $(CARGO_PROJ) && cargo build)
