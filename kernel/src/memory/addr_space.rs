@@ -1,13 +1,10 @@
-pub struct AddressSpace {
-    phys_addr: usize,
-    size: usize,
-}
+use crate::process::Program;
+
+/// An address space represents the mapped memory of a single process.
+pub struct AddressSpace {}
 
 impl AddressSpace {
-    pub fn new() -> Self {
-        AddressSpace {
-            phys_addr: 0,
-            size: 0,
-        }
+    pub fn new(prog: &Program) -> Self {
+        AddressSpace {}
     }
 }

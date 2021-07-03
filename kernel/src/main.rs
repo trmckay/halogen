@@ -7,8 +7,7 @@ global_asm!(include_str!("boot/trap.s"));
 
 pub mod driver;
 pub mod memory;
-pub mod proc;
-pub mod program;
+pub mod process;
 
 mod panic;
 mod print;
