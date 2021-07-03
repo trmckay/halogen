@@ -1,6 +1,7 @@
 use crate::{mmio_rd, mmio_wr};
 use core::fmt::{Error, Write};
 
+/// Trait for modules that can drive a UART device.
 pub trait UartDriver {
     /// Create an instance of the UART driver and perform any initialization
     /// required by the device.
@@ -13,6 +14,7 @@ pub trait UartDriver {
     fn write_byte(&mut self, byte: u8);
 }
 
+/// Memory address of the QEMU UART device.
 pub const QEMU_UART_ADDR: usize = 0x10000000;
 
 /// Driver for the UART module in the QEMU virt machine.
