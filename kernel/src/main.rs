@@ -5,10 +5,13 @@
 global_asm!(include_str!("boot/boot.s"));
 global_asm!(include_str!("boot/trap.s"));
 
+pub mod driver;
+pub mod memory;
+pub mod program;
+pub mod proc;
+
 mod panic;
 mod print;
-
-pub mod driver;
 
 #[no_mangle]
 pub extern "C" fn kernel() -> ! {
