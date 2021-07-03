@@ -1,4 +1,4 @@
-use crate::{print, println, util::print_dump};
+use crate::{print, println, panic::print_dump};
 use core::panic::PanicInfo;
 
 #[panic_handler]

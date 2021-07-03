@@ -9,7 +9,6 @@ mod panic;
 mod print;
 
 pub mod driver;
-pub mod util;
 
 #[no_mangle]
 pub extern "C" fn kernel() -> ! {
