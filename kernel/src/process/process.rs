@@ -1,7 +1,7 @@
 use super::Context;
-use crate::memory::AddressSpace;
-use crate::program::Program;
+use super::Program;
 
+// Different states a process can exist in.
 pub enum ProcessState {
     Ready,
     Running,
@@ -12,8 +12,7 @@ pub enum ProcessState {
 pub struct Process {
     id: u32,
     state: ProcessState,
-    addr_space: AddressSpace,
-    context: Option<Context>,
+    context: Context,
 }
 
 impl Process {
@@ -22,14 +21,16 @@ impl Process {
         Process {
             id: 0,
             state: ProcessState::Ready,
-            addr_space: AddressSpace::new(),
-            context: None,
+            context: Context::new(prog),
         }
     }
 
+    /// Load a process' context and resume execution.
     pub fn start(&mut self) {}
 
+    /// Save a process' context and pause execution.
     pub fn sleep(&mut self) {}
 
+    /// Kill a process.
     pub fn kill(&mut self) {}
 }
