@@ -1,6 +1,8 @@
-mod uart;
+mod sifive_u;
+mod virt;
 
-pub use uart::*;
+#[cfg(platform = "virt")]
+pub use virt::*;
 
 #[macro_export]
 macro_rules! mmio_wr {
