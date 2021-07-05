@@ -1,4 +1,3 @@
-mod sifive_u;
 mod virt;
 
 #[cfg(platform = "virt")]
