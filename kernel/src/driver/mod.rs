@@ -1,7 +1,11 @@
+mod sifive_u;
 mod virt;
 
 #[cfg(platform = "virt")]
 pub use virt::*;
+
+#[cfg(platform = "sifive_u")]
+pub use sifive_u::*;
 
 #[macro_export]
 macro_rules! mmio_wr {

@@ -1,4 +1,3 @@
-# RISC-V rv64gc bootloader
 # General behavior is this:
 #   1. Select the correct hart to boot with. RISC-V requires 1.
 #   2. Set up the global pointer
@@ -43,7 +42,7 @@ BSS_INIT_DONE:
     csrw  mstatus, t0
 
 # Go here (to the kernel) when we're done.
-    la    t1, kernel
+    la    t1, kernel_start
     csrw  mepc, t1
 
 # Also need to initialize the machine trap vector.

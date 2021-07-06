@@ -12,7 +12,7 @@ pub mod process;
 mod panic;
 
 #[no_mangle]
-pub extern "C" fn kernel() -> ! {
+pub extern "C" fn kernel_start() -> ! {
     println!("Hello, world.");
     panic!();
 }
