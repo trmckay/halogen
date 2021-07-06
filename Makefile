@@ -1,8 +1,8 @@
-RUNNER_IMG_NAME=pentoxide-runner
+RUNNER_IMG_NAME=lab_os-runner
 SPHINX_IMG_NAME=sphinxdoc/sphinx
-DOCKERFILE=kernel/Dockerfile
+DOCKERFILE=lab_os/Dockerfile
 DOCKER_DIR=`dirname $(DOCKERFILE)`
-CARGO_PROJ=`pwd`/kernel
+CARGO_PROJ=`pwd`/lab_os
 SPHINX_DIR=`pwd`/docs
 
 

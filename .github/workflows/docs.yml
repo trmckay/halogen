@@ -1,7 +1,7 @@
 name: "Sphinx docs"
-on: 
+on:
   - push
-  
+
 jobs:
   docs:
     runs-on: ubuntu-latest
@@ -12,7 +12,7 @@ jobs:
         docs-folder: "docs/"
     - name: Commit documentation changes
       run: |
-        git clone https://github.com/trmckay/pentoxide.git --branch gh-pages --single-branch gh-pages
+        git clone https://github.com/trmckay/lab_os.git --branch gh-pages --single-branch gh-pages
         cp -r docs/build/html/* gh-pages/
         cd gh-pages
         touch .nojekyll

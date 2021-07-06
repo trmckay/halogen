@@ -1,12 +1,12 @@
-# Pentoxide
+# Lab_OS
 
 An embedded OS for RISC-V made with Rust.
 
 ## Clone and configure
 
 ```
-git clone git@github.com:trmckay/pentoxide.git
-cd pentoxide
+git clone git@github.com:trmckay/lab_os.git
+cd lab_os
 make init
 ```
 
@@ -28,7 +28,7 @@ Then run: `make run`.
 ## Documentation
 
 The documentation is continuously built and available at
-[https://www.trmckay.com/pentoxide](https://www.trmckay.com/pentoxide/index.html).
+[https://www.trmckay.com/lab_os](https://www.trmckay.com/lab_os/index.html).
 
 The preferred method for building locally is with Docker. Use it with `make docs`.
 

@@ -19,7 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Pentoxide'
+project = 'Lab_OS'
 copyright = '2021, Trevor McKay'
 author = 'Trevor McKay'
 
@@ -103,7 +103,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'pentoxidedoc'
+htmlhelp_basename = 'lab_osdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -130,7 +130,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'pentoxide.tex', 'pentoxide Documentation',
+    (master_doc, 'lab_os.tex', 'lab_os Documentation',
      'Trevor McKay', 'manual'),
 ]
 
@@ -140,7 +140,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'pentoxide', 'pentoxide Documentation',
+    (master_doc, 'lab_os', 'lab_os Documentation',
      [author], 1)
 ]
 
@@ -151,9 +151,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'pentoxide', 'pentoxide Documentation',
-     author, 'pentoxide', 'One line description of project.',
-     'Miscellaneous'),
+    (master_doc, 'lab_os', 'Lab_OS Documentation',
+     author, 'Trevor McKay', 'An embedded OS for RISC-V made with Rust.',
+     'Operating Systems'),
 ]
 
 
