@@ -1,6 +1,5 @@
 lab_os/target
 lab_os/Cargo.lock
-.env
 .vscode
 .vim
 docs/build
