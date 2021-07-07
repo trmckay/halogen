@@ -3,5 +3,13 @@
 # Format or check all source files (intended as a pre-commit hook).
 
 GIT_ROOT=$(git rev-parse --show-toplevel)
-rustfmt "$GIT_ROOT"/kernel/src/*.rs
-shellcheck "$GIT_ROOT"/scripts/*.sh || exit 1
+
+shopt -s globstar
+for file in "$GIT_ROOT"/**/*.rs; do
+    rustfmt --check "$file"
+done
+
+shopt -s globstar
+for file in "$GIT_ROOT"/**/*.sh; do
+    shellcheck "$file"
+done
