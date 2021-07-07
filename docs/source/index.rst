@@ -10,8 +10,8 @@ Welcome to Lab_OS' documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   meta/todo
    meta/links
+   meta/style
 
 Indices and tables
 ==================
