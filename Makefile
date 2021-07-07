@@ -1,62 +1,65 @@
-RUNNER_IMG_NAME=lab_os-runner
-SPHINX_IMG_NAME=sphinxdoc/sphinx
-DOCKERFILE=lab_os/Dockerfile
-DOCKER_DIR=`dirname $(DOCKERFILE)`
-CARGO_PROJ=`pwd`/lab_os
-SPHINX_DIR=`pwd`/docs
+include .env
 
+SHELL            = /bin/bash
+NAME             = lab_os
+
+TARGET           = riscv64gc-unknown-none-elf
+
+DOCKER_DIR       = docker
+DOCKERFILE       = $(DOCKER_DIR)/Dockerfile
+DOCKER_IMG       = alpine-qemu-system-riscv64
+
+CARGO_PROJ       = $(NAME)
+CARGO_FLAGS      = --verbose \
+                   --target=$(TARGET)
+RUST_FLAGS       = -Clink-arg=-Tld/${PLATFORM}.ld \
+                   --cfg "platform=\"${PLATFORM}\""
+
+SPHINX_DIR       = docs
+
+BINARY           = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
+
+QEMU             = qemu-system-riscv64
+QEMU_FLAGS       = -machine ${PLATFORM} \
+                   -cpu rv64 -m ${MEM}  \
+                   -smp ${SMP}          \
+                   -nographic           \
+                   -serial mon:stdio    \
+                   -bios none           \
+                   -kernel
+
+default: build
 
 # === BAREMETAL KERNEL RULES ===
 
 init:
-	cd $(CARGO_PROJ)
-	# configure rust toolchain
-	rustup override set nightly
+	cd $(CARGO_PROJ) && \
+	rustup override set nightly && \
 	rustup target add riscv64gc-unknown-none-elf
-	# install pre-commit hooks
 	eval `pwd`/scripts/install_hooks.sh
 
 build:
-	(cd $(CARGO_PROJ) && cargo build)
+	cd $(CARGO_PROJ) && \
+	CARGO_BUILD_RUSTFLAGS="$(RUST_FLAGS)" cargo build $(CARGO_FLAGS)
 
-run:
-	(cd $(CARGO_PROJ) && cargo run)
+run: build
+	$(QEMU_RUNNER) $(BINARY)
 
 release:
-	(cd $(CARGO_PROJ) && cargo build --release)
+	cd $(CARGO_PROJ) && \
+	cargo build --release $(CARGO_FLAGS)
 
 clean:
-	(cd $(CARGO_PROJ) && cargo clean)
+	cd $(CARGO_PROJ) && \
+	cargo clean
 
 
 # === DOCKER KERNEL RULES ===
 
-run-img-docker:
-	sudo docker build -t $(RUNNER_IMG_NAME) $(DOCKER_DIR)
+build-docker: $(DOCKERFILE)
+	sudo docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
 
-run-docker: run-img-docker
-	sudo docker run \
-		--rm \
-		--mount type=bind,source=$(CARGO_PROJ),target=/cargo \
-		$(RUNNER_IMG_NAME)
-
-clean-docker: run-img-docker
-	sudo docker run \
-		--rm \
-		--mount type=bind,source=$(CARGO_PROJ),target=/cargo \
-		$(RUNNER_IMG_NAME) clean
-
-
-# === DOCS RULES ===
-
-docs:
-	sudo docker run \
-		--rm \
-		--mount type=bind,source=$(SPHINX_DIR),target=/docs \
-		$(SPHINX_IMG_NAME) make html
-
-docs-clean:
-	sudo docker run \
-		--rm \
-		--mount type=bind,source=$(SPHINX_DIR),target=/docs \
-		$(SPHINX_IMG_NAME) make clean
+run-docker: build-docker build
+	sudo docker run --rm -it \
+		-v `pwd`/$(BINARY):/binary:Z \
+		$(DOCKER_IMG) $(QEMU_FLAGS) /binary
