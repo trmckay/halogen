@@ -7,7 +7,7 @@ TARGET           = riscv64gc-unknown-none-elf
 
 DOCKER_DIR       = docker
 DOCKERFILE       = $(DOCKER_DIR)/Dockerfile
-DOCKER_IMG       = alpine-qemu-system-riscv64
+DOCKER_IMG       = qemu-system-riscv64
 
 CARGO_PROJ       = $(NAME)
 CARGO_FLAGS      = --verbose \
