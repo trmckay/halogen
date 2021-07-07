@@ -3,3 +3,5 @@ lab_os/Cargo.lock
 .vscode
 .vim
 docs/build
+compile_commands.json
+.env
