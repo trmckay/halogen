@@ -67,25 +67,13 @@ build:
 	CARGO_BUILD_RUSTFLAGS="$(RUST_FLAGS)" cargo build $(CARGO_FLAGS)
 
 
-run: build
-	$(QEMU_RUNNER) $(BINARY)
-
-
-release:
-	cd $(CARGO_PROJ) && \
-	cargo build --release $(CARGO_FLAGS)
-
-
 clean:
 	cd $(CARGO_PROJ) && \
 	cargo clean
 
 
-build-docker: $(DOCKERFILE)
-	sudo docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
-
-
-run-docker: build-docker build
+run: build
+	sudo docker image ls | grep $(DOCKER_IMG) || sudo docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
 	sudo docker run --rm -it \
-		-v `pwd`/$(BINARY):/binary:Z \
+		-v `pwd`/$(BINARY):/binary:ro \
 		$(DOCKER_IMG) $(QEMU_FLAGS) /binary

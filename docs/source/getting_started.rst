@@ -7,7 +7,7 @@ Cloning the repository
 The code is hosted on GitHub at
 `trmckay/lab_os <https://github.com/trmckay/lab_os/>`__.
 
-Clone the repository:
+Clone the repository::
 
     git clone git@github.com:trmckay/lab_os.git
 
@@ -31,12 +31,7 @@ configuration. This includes:
 Run the OS
 ----------
 
-There are two ways to run the operating system: "bare-metal" using QEMU and Docker.
-
-For QEMU, ``qemu-system-riscv64`` must be installed. This option works best
-if you are running Linux. Running is as simple as doing ``make run`` from the
-project root.
-
-Docker is the best option if you are not running Linux or your distribution does
-not package QEMU for RISC-V. With the Docker daemon or Docker Desktop running,
-you can build and run the image with ``make run-docker`` from the project root.
+Running the OS aims to be a simple process by using Docker to create a predictable
+environment in which the built binary can be executed. After installing Docker for
+your system, ``make run`` will build the project, build the Docker image, then run
+the OS on QEMU within the container.
