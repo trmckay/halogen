@@ -7,7 +7,7 @@ Cloning the repository
 The code is hosted on GitHub at
 `trmckay/lab_os <https://github.com/trmckay/lab_os/>`__.
 
-Clone the repository:
+Clone the repository::
 
     git clone git@github.com:trmckay/lab_os.git
 
