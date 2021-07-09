@@ -10,8 +10,10 @@ basics such as:
 
 There a few preferences that cannot be enforced by ``rustfmt``.
 
-* No unnecessary abbreviations (use ``create_process()`` instead of ``cproc()``).
-* Comment all non-trivial functions
+* Project should be simple to clone and begin work within seconds.
+* Prioritize good documentation and comment as much as reasonable.
+* No unnecessary abbreviations or unhelpful names
+  (``create`` instead of ``creat``, ``swap_fd`` instead of ``dup2``).
 * Prefer small modules and structures
-* One structure per file with the exception of trivial submodules.
+* One structure per file with the exception of trivial sub-modules.
 * Wrap functionality that requires assembly in safe Rust.

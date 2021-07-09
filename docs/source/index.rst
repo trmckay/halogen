@@ -6,16 +6,16 @@
 Welcome to Lab_OS' documentation!
 ======================================
 
+This is an early work in progress. There is some minimally-functioning code
+available, but I am primarily in the planning/research phase. With that, the
+docs-to-code ratio is currently somewhat high.
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   getting_started
+   philosophy
    meta/links
    meta/style
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
