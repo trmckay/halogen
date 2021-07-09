@@ -3,7 +3,7 @@ include .env
 SHELL            = /bin/bash
 NAME             = lab_os
 
-REQUIREMENTS     = rustup cargo git
+REQUIREMENTS     = rustup cargo git docker
 
 RUST_FILES       = $(shell find . -type f -name '*.rs')
 SHELL_FILES      = $(shell find . -type f -name '*.sh')
@@ -42,6 +42,8 @@ init:
 	for req in $(REQUIREMENTS); \
 	do command -v $$req > /dev/null || echo "Missing requirement '$$req'";\
 	done
+	# Configure environment
+	echo -e 'PLATFORM=virt\nSMP=1\nMEM=32M' > .env
 	# Set-up RISC-V rv64gc toolchain
 	cd $(CARGO_PROJ) && \
 	rustup override set nightly && \

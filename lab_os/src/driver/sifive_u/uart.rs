@@ -1,9 +1,9 @@
 use crate::{mmio_rd, mmio_wr};
 use core::fmt::{Error, Write};
 
-/// Memory address of the QEMU UART device.
-const MMIO_ADDR: usize = 0x10010000;
+use super::DEV_UART0;
 
+/// Memory address of the QEMU UART device.
 const WRITE_OFFST: usize = 0x00;
 const READ_OFFST: usize = 0x04;
 
@@ -17,7 +17,7 @@ pub struct Uart {
 
 impl Uart {
     pub fn new() -> Self {
-        Uart { addr: MMIO_ADDR }
+        Uart { addr: DEV_UART0 }
     }
 
     pub fn read_byte(&self) -> u8 {
