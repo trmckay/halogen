@@ -6,9 +6,9 @@ A simple OS for RISC-V made with Rust.
 ## Clone and configure
 
 ```
-git clone git@github.com:trmckay/lab_os.git
-cd lab_os
-make init
+git clone git@github.com:trmckay/lab_os.git && \
+cd lab_os && \
+make -s init
 ```
 
 Then edit `.env` to configure platform, memory, etc.

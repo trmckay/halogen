@@ -3,6 +3,11 @@ include .env
 SHELL            = /bin/bash
 NAME             = lab_os
 
+REQUIREMENTS     = rustup cargo git
+
+RUST_FILES       = $(shell find . -type f -name '*.rs')
+SHELL_FILES      = $(shell find . -type f -name '*.sh')
+
 TARGET           = riscv64gc-unknown-none-elf
 
 DOCKER_DIR       = docker
@@ -28,36 +33,53 @@ QEMU_FLAGS       = -machine ${PLATFORM} \
                    -bios none           \
                    -kernel
 
+
 default: build
 
-# === BAREMETAL KERNEL RULES ===
 
 init:
+	# Check for requirements
+	for req in $(REQUIREMENTS); \
+	do command -v $$req > /dev/null || echo "Missing requirement '$$req'";\
+	done
+	# Set-up RISC-V rv64gc toolchain
 	cd $(CARGO_PROJ) && \
 	rustup override set nightly && \
 	rustup target add riscv64gc-unknown-none-elf
-	eval `pwd`/scripts/install_hooks.sh
+	# Install pre-commit hooks
+	echo -e \
+	'#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make check' \
+	> .git/pre-commit
+	chmod +x .git/pre-commit
+
+check:
+	rustfmt --check $(RUST_FILES)
+	cd $(CARGO_PROJ) && \
+	CARGO_BUILD_RUSTFLAGS="$(RUST_FLAGS)" cargo check $(CARGO_FLAGS)
+
 
 build:
 	cd $(CARGO_PROJ) && \
 	CARGO_BUILD_RUSTFLAGS="$(RUST_FLAGS)" cargo build $(CARGO_FLAGS)
 
+
 run: build
 	$(QEMU_RUNNER) $(BINARY)
+
 
 release:
 	cd $(CARGO_PROJ) && \
 	cargo build --release $(CARGO_FLAGS)
+
 
 clean:
 	cd $(CARGO_PROJ) && \
 	cargo clean
 
 
-# === DOCKER KERNEL RULES ===
-
 build-docker: $(DOCKERFILE)
 	sudo docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
+
 
 run-docker: build-docker build
 	sudo docker run --rm -it \
