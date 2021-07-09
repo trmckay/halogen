@@ -5,3 +5,4 @@ lab_os/Cargo.lock
 docs/build
 compile_commands.json
 .env
+docs/source/_build

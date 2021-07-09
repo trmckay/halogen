@@ -7,7 +7,9 @@ Cloning the repository
 The code is hosted on GitHub at
 `trmckay/lab_os <https://github.com/trmckay/lab_os/>`__.
 
-Clone the repository::
+Clone the repository:
+
+.. code-block:: bash
 
     git clone git@github.com:trmckay/lab_os.git
 
@@ -26,6 +28,8 @@ configuration. This includes:
 * Configuring the correct Rust toolchain
 
 * Installing pre-commit hooks
+
+Run ``make -s init`` to do this.
 
 
 Run the OS
