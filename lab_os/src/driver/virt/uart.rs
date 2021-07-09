@@ -1,22 +1,22 @@
 use crate::{mmio_rd, mmio_wr};
 use core::fmt::{Error, Write};
 
-/// Memory address of the QEMU UART device.
-pub const MMIO_ADDR: usize = 0x10000000;
+use super::DEV_UART;
 
 /// Driver for the UART module in the QEMU virt machine.
 pub struct Uart {
-    addr: usize,
+    addr: *mut u8,
 }
 
 impl Uart {
     pub fn new() -> Self {
-        let uart = Uart { addr: MMIO_ADDR };
-        let mmio_ptr = uart.addr as *mut u8;
+        let uart = Uart {
+            addr: DEV_UART as *mut u8,
+        };
         unsafe {
-            mmio_ptr.add(3).write_volatile(0b11);
-            mmio_ptr.add(2).write_volatile(0b1);
-            mmio_ptr.add(1).write_volatile(0b1);
+            mmio_wr!(uart.addr, 3, 0b11);
+            mmio_wr!(uart.addr, 2, 0b1);
+            mmio_wr!(uart.addr, 1, 0b1);
         }
         uart
     }
