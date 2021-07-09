@@ -1,0 +1,8 @@
+[package]
+name = "test_environment"
+edition = "2018"
+version = "1.0.0"
+
+[[bin]]
+path = "main.rs"
+name = "test_environment"
