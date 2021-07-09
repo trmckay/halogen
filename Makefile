@@ -3,10 +3,9 @@ include .env
 SHELL             = /bin/bash
 NAME              = lab_os
 
-REQUIREMENTS      = rustup cargo git docker
+REQUIREMENTS      = rustup cargo git docker rustfmt
 
 RUST_FILES        = $(shell find . -type f -name '*.rs')
-SHELL_FILES       = $(shell find . -type f -name '*.sh')
 
 TARGET            = riscv64gc-unknown-none-elf
 PLATFORMS         = sifive_u virt
@@ -45,7 +44,7 @@ default: build
 init:
 	# Check for requirements
 	for req in $(REQUIREMENTS); \
-	do command -v $$req > /dev/null || echo "Missing requirement '$$req'";\
+	    do command -v $$req > /dev/null || echo "Missing requirement '$$req'";\
 	done
 	# Set-up RISC-V rv64gc toolchain
 	cd $(CARGO_PROJ) && \
@@ -53,16 +52,17 @@ init:
 	rustup target add riscv64gc-unknown-none-elf
 	# Install pre-commit hooks
 	echo -e \
-	'#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make format' \
+	'#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make fmt' \
 	> .git/pre-commit
 	chmod +x .git/pre-commit
 
 
-format:
+fmt:
+	rustfmt $(RUST_FILES)
+
+
+check:
 	rustfmt --check $(RUST_FILES)
-
-
-check: format
 	cd $(CARGO_PROJ) && \
 	$(foreach \
 	    platform, \
