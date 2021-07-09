@@ -48,12 +48,16 @@ init:
 	rustup target add riscv64gc-unknown-none-elf
 	# Install pre-commit hooks
 	echo -e \
-	'#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make check' \
+	'#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make format' \
 	> .git/pre-commit
 	chmod +x .git/pre-commit
 
-check:
+
+format:
 	rustfmt --check $(RUST_FILES)
+
+
+check: format
 	cd $(CARGO_PROJ) && \
 	CARGO_BUILD_RUSTFLAGS="$(RUST_FLAGS)" cargo check $(CARGO_FLAGS)
 
