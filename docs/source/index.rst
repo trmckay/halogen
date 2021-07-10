@@ -17,5 +17,6 @@ docs-to-code ratio is currently somewhat high.
 
    getting_started
    philosophy
+   testing
    meta/links
    meta/style

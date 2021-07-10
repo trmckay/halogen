@@ -11,12 +11,16 @@ pub mod process;
 
 mod panic;
 
+/// Entry-point for the kernel. After the assembly-based set-up
+/// is complete, the system will jump here.
 #[no_mangle]
 pub extern "C" fn kernel_start() -> ! {
     println!("Hello, world.");
     panic!();
 }
 
+/// CPU trap-handler. When the CPU issues a trap, it will jump
+/// here.
 #[no_mangle]
 pub extern "C" fn mtrap_vector() {
     unsafe {
@@ -24,11 +28,12 @@ pub extern "C" fn mtrap_vector() {
     }
 }
 
+/// `print!` and `println!` are used to output to the console. They
+/// use a platform-specific UART driver as re-exported in `driver`.
 #[macro_export]
 macro_rules! print
 {
     ($($args:tt)+) => ({
-        // Use the platform-specific UART driver.
         use crate::driver::Uart;
         use core::fmt::Write;
 
