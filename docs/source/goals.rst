@@ -1,11 +1,34 @@
-Philosophy
+Goals
 ==========
+
+Scope
+-----
+
+To start, the goal of this project is explicitly not to create a platform
+for desktop computing, nor is it to replace Linux or any other Unix-like
+OS as a platform for IoT or embedded applications. The project aims to
+be a platform for learning, rather than for any serious computing. It aims
+to showcase fundamental operating systems concepts in an environment that
+is easy to experiment with. This includes:
+
+* Processes, scheduling, and LDE
+* Memory virtualization
+* Device drivers
+* Timers and interrupts
+* Filesystems
+
+There will not be a display-server, web browser, or anything else that
+makes operating systems useful from a user's perspective.
+
+
+Priorities
+----------
 
 This project is primarily intended as a learning experience for myself
 and any who chose to work on it. With that, the project should prioritize
 choices that lead to maximal learning outcomes.
 
-Some of the principles that I believe can help with this are:
+Some of the priorities that I believe can help with this are:
 
 * **Modularity**: it should be possible for different implementations
   of key operating system functionality to be drop-in replaced. This
@@ -22,7 +45,7 @@ Some of the principles that I believe can help with this are:
 
 
 Rust
-----
+^^^^
 
 Each of these principles lead to Rust as the natural language choice. While
 the borrow-checker and other unique features of Rust can lead to a slightly
@@ -35,7 +58,7 @@ the language.
 
 
 RISC-V
-------
+^^^^^^
 
 A kernel ties together the hardware and a user's software. So, experimenting
 with the software is only part of the fun. As an open ISA, RISC-V enables

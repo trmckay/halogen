@@ -15,8 +15,10 @@ docs-to-code ratio is currently somewhat high.
    :maxdepth: 2
    :caption: Contents:
 
+   Current progress <https://kanboard.trmckay.com/public/board/a7e176deca4832681fa2b695c64ffb6720695ac18c816a45ecf59165b150>
+   goals
    getting_started
-   philosophy
    testing
    meta/links
    meta/style
+
