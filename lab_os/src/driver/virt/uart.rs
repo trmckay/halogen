@@ -1,39 +1,40 @@
 use crate::{mmio_rd, mmio_wr};
 use core::fmt::{Error, Write};
 
-use super::DEV_UART;
+/// Physical address of the UART device.
+pub const DEV_UART: usize = 0x10000000;
 
-/// Driver for the UART module in the QEMU virt machine.
-pub struct Uart {
-    addr: *mut u8,
-}
+/// Simple handle for the UART device.
+/// This is implemented as a struct so
+/// we can use the Write trait.
+///
+/// We also have the advantage of enforcing
+/// a mutable access on writes.
+pub struct Uart;
 
 impl Uart {
-    pub fn new() -> Self {
-        let uart = Uart {
-            addr: DEV_UART as *mut u8,
-        };
-        unsafe {
-            mmio_wr!(uart.addr, 3, 0b11);
-            mmio_wr!(uart.addr, 2, 0b1);
-            mmio_wr!(uart.addr, 1, 0b1);
-        }
-        uart
+    /// Initial setup of the device.
+    pub fn init() {
+        mmio_wr!(DEV_UART, 3, 0b11);
+        mmio_wr!(DEV_UART, 2, 0b1);
+        mmio_wr!(DEV_UART, 1, 0b1);
     }
 
+    /// Read a single byte from the device.
+    #[inline]
     pub fn read_byte(&self) -> u8 {
-        unsafe {
-            return mmio_rd!(self.addr);
-        }
+        return mmio_rd!(DEV_UART);
     }
 
+    /// Write a single byte to the device.
+    #[inline]
     pub fn write_byte(&mut self, byte: u8) {
-        unsafe {
-            mmio_wr!(self.addr, byte);
-        }
+        mmio_wr!(DEV_UART, byte);
     }
 }
 
+// Implement the `Write` trait so we can
+// print format strings.
 impl Write for Uart {
     fn write_str(&mut self, s: &str) -> Result<(), Error> {
         for b in s.bytes() {

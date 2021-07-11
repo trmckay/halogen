@@ -1,7 +1,8 @@
 use crate::{print, println};
 use core::ptr::read;
 
-// Prints a human-readable dump of memory.
+/// Prints a human-readable dump of memory from
+/// `base` to `base + size`.
 pub fn print_dump(base: usize, size: usize) {
     let mut buf: [u8; 16] = [0; 16];
 

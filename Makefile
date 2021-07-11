@@ -9,7 +9,6 @@ RUST_FILES        = $(shell find . -type f -name '*.rs')
 PYTHON_FILES        = $(shell find . -type f -name '*.py')
 
 TARGET            = riscv64gc-unknown-none-elf
-PLATFORMS         = sifive_u virt
 
 DOCKER_DIR        = docker
 DOCKERFILE        = $(DOCKER_DIR)/Dockerfile
@@ -20,7 +19,6 @@ CARGO_FLAGS       = --verbose \
                    --target=$(TARGET)
 
 LINKER_FLAG       = -Clink-arg=-Tld/${PLATFORM}.ld
-ENV_PLATFORM_FLAG = --cfg "platform=\"${PLATFORM}\""
 
 BINARY            = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
 
@@ -66,16 +64,11 @@ check:
 	rustfmt --check $(RUST_FILES)
 	black --check $(PYTHON_FILES)
 	cd $(CARGO_PROJ) && \
-	$(foreach \
-	    platform, \
-            $(PLATFORMS), \
-	    CARGO_BUILD_RUSTFLAGS="--cfg platform=\"$(platform)\"" \
-	    cargo check $(CARGO_FLAGS); \
-	)
+	cargo check $(CARGO_FLAGS);
 
 build: .env
 	cd $(CARGO_PROJ) && \
-	CARGO_BUILD_RUSTFLAGS="$(LINKER_FLAG) $(ENV_PLATFORM_FLAG)" \
+	CARGO_BUILD_RUSTFLAGS="$(LINKER_FLAG)" \
 	cargo build $(CARGO_FLAGS)
 
 clean:

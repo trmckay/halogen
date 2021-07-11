@@ -5,18 +5,33 @@
 
 global_asm!(include_str!("boot/boot.s"));
 
-pub mod driver;
-pub mod memory;
-pub mod process;
+/// Delivers functionality related to debugging and
+/// error-reporting.
+mod debug;
 
+/// Contains device drivers and platform-specific
+/// code.
+mod driver;
+
+/// Implements the `panic` language feature.
 mod panic;
 
 /// Entry-point for the kernel. After the assembly-based set-up
 /// is complete, the system will jump here.
 #[no_mangle]
 pub extern "C" fn kernel_start() -> ! {
-    println!("Hello, world.");
-    panic!();
+    // Initialize any hardware that needs to be
+    // set up before the kernel runs.
+    driver::platform_init();
+
+    loop {
+        let c = get_char!();
+        if c != 'p' {
+            print!("{}", c);
+        } else {
+            panic!();
+        }
+    }
 }
 
 /// CPU trap-handler. When the CPU issues a trap, it will jump
@@ -26,32 +41,4 @@ pub extern "C" fn mtrap_vector() {
     unsafe {
         asm!("mret");
     }
-}
-
-/// `print!` and `println!` are used to output to the console. They
-/// use a platform-specific UART driver as re-exported in `driver`.
-#[macro_export]
-macro_rules! print
-{
-    ($($args:tt)+) => ({
-        use crate::driver::Uart;
-        use core::fmt::Write;
-
-        let mut uart = Uart::new();
-        let _ = write!(uart, $($args)+);
-    });
-}
-
-#[macro_export]
-macro_rules! println
-{
-    () => ({
-        print!("\n")
-    });
-    ($fmt:expr) => ({
-        print!(concat!($fmt, "\n"))
-    });
-    ($fmt:expr, $($args:tt)+) => ({
-        print!(concat!($fmt, "\n"), $($args)+)
-    });
 }
