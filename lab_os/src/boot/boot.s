@@ -4,8 +4,6 @@
 #   3. Initialize the BSS section.
 #   4. Initialize the stack pointer.
 
-# TODO: pull this into Rust wherever possible.
-
 .option norvc
 .section .data
 

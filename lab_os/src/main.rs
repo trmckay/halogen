@@ -3,8 +3,6 @@
 #![feature(panic_info_message, global_asm, asm, exclusive_range_pattern)]
 #![allow(dead_code)]
 
-global_asm!(include_str!("boot/boot.s"));
-
 /// Delivers functionality related to debugging and
 /// error-reporting.
 mod debug;
@@ -15,6 +13,8 @@ mod driver;
 
 /// Implements the `panic` language feature.
 mod panic;
+
+mod boot;
 
 /// Entry-point for the kernel. After the assembly-based set-up
 /// is complete, the system will jump here.
