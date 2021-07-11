@@ -6,7 +6,7 @@ NAME              = lab_os
 REQUIREMENTS      = rustup cargo git docker rustfmt python3 pip3
 
 RUST_FILES        = $(shell find . -type f -name '*.rs')
-PYTHON_FILES        = $(shell find . -type f -name '*.py')
+PYTHON_FILES      = $(shell find . -type f -name '*.py')
 
 TARGET            = riscv64gc-unknown-none-elf
 
@@ -71,9 +71,8 @@ build: .env
 	CARGO_BUILD_RUSTFLAGS="$(LINKER_FLAG)" \
 	cargo build $(CARGO_FLAGS)
 
-clean:
-	cd $(CARGO_PROJ) && \
-	cargo clean
+dump: build
+	riscv64-linux-gnu-objdump -S $(BINARY) | less
 
 run: build .env
 	sudo docker image ls | \
@@ -82,3 +81,8 @@ run: build .env
 	sudo docker run --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
 	    $(DOCKER_IMG) $(QEMU_FLAGS) /binary
+
+clean:
+	cd $(CARGO_PROJ) && \
+	cargo clean
+
