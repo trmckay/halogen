@@ -57,12 +57,12 @@ init:
 	chmod +x .git/pre-commit
 
 fmt:
-	rustfmt $(RUST_FILES)
-	black $(PYTHON_FILES)
+	rustfmt -q $(RUST_FILES)
+	black -q $(PYTHON_FILES)
 
 check:
-	rustfmt --check $(RUST_FILES)
-	black --check $(PYTHON_FILES)
+	rustfmt -q --check $(RUST_FILES)
+	black -q --check $(PYTHON_FILES)
 	cd $(CARGO_PROJ) && \
 	cargo check $(CARGO_FLAGS);
 
