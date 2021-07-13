@@ -24,6 +24,12 @@ impl UartDriver {
         UartDriver { phys_addr }
     }
 
+    pub fn init(&mut self) {
+        mmio_wr!(self.phys_addr, 3, 0b11);
+        mmio_wr!(self.phys_addr, 2, 0b1);
+        mmio_wr!(self.phys_addr, 1, 0b1);
+    }
+
     /// Read a single byte from the device.
     ///
     /// Example:
@@ -61,28 +67,51 @@ impl Write for UartDriver {
     }
 }
 
+/// Print a format string to the UART device.
+///
+/// Example:
+///
+/// ```
+/// ```
 #[macro_export]
 macro_rules! print
 {
-    ($($args:tt)+) => ({
-        use crate::driver::UartDriver;
+    ($d:expr, $($args:tt)+) => ({
         use core::fmt::Write;
 
-        let mut uart = UartDriver::new(crate::driver::DEV_UART);
-        let _ = write!(uart, $($args)+);
+        let _ = write!($d, $($args)+);
     });
 }
 
+/// Print a format string to the UART device with a trailing newline.
+///
+/// Example:
+///
+/// ```
+/// ```
 #[macro_export]
 macro_rules! println
 {
-    () => ({
-        print!("\n")
+    ($d:expr) =>  ({
+        print!($d, "\n")
     });
-    ($fmt:expr) => ({
-        print!(concat!($fmt, "\n"))
+    ($d:expr, $fmt:expr) => ({
+        print!($d, concat!($fmt, "\n"))
     });
-    ($fmt:expr, $($args:tt)+) => ({
-        print!(concat!($fmt, "\n"), $($args)+)
+    ($d:expr, $fmt:expr, $($args:tt)+) => ({
+        print!($d, concat!($fmt, "\n"), $($args)+)
     });
+}
+
+/// Read a single character from the primary UART device.
+///
+/// Example:
+///
+/// ```
+/// ```
+#[macro_export]
+macro_rules! read_char {
+    () => {
+        (crate::driver::UartDriver::new(crate::driver::DEV_UART).read_byte() as char)
+    };
 }
