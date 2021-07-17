@@ -78,7 +78,6 @@ macro_rules! print
 {
     ($d:expr, $($args:tt)+) => ({
         use core::fmt::Write;
-
         let _ = write!($d, $($args)+);
     });
 }

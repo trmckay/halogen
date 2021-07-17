@@ -2,7 +2,6 @@ SHELL             = /bin/bash
 NAME              = lab_os
 
 RUST_FILES        = $(shell find . -type f -name '*.rs')
-PYTHON_FILES      = $(shell find . -type f -name '*.py')
 
 TARGET            = riscv64gc-unknown-none-elf
 
@@ -35,27 +34,29 @@ init:
 	rustup target add riscv64gc-unknown-none-elf
 	# Install pre-commit hooks
 	echo -e \
-	    '#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make fmt' \
-	    > .git/pre-commit
-	chmod +x .git/pre-commit
+	    '#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make check' \
+	    > .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
 
-fmt:
+fmt: $(RUST_FILES)
 	rustfmt -q $(RUST_FILES)
-	black -q $(PYTHON_FILES)
 
-check:
+check: $(RUST_FILES)
 	cd $(CARGO_PROJ) && \
 	cargo check $(CARGO_FLAGS);
 	rustfmt -q --check $(RUST_FILES)
-	black -q --check $(PYTHON_FILES)
 
-build:
+build: $(RUST_FILES)
 	cd $(CARGO_PROJ) && \
 	cargo build $(CARGO_FLAGS)
 
-run:
+run: $(RUST_FILES)
 	cd $(CARGO_PROJ) && \
 	cargo run $(CARGO_FLAGS)
+
+test: $(RUST_FILES)
+	cd $(CARGO_PROJ) && \
+	cargo test $(CARGO_FLAGS)
 
 dump: build
 	riscv64-linux-gnu-objdump -S $(BINARY) | less
