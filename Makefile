@@ -6,7 +6,7 @@ PYTHON_FILES      = $(shell find . -type f -name '*.py')
 
 TARGET            = riscv64gc-unknown-none-elf
 
-DOCKER_DIR        = docker
+DOCKER_DIR        = .
 DOCKERFILE        = $(DOCKER_DIR)/Dockerfile
 DOCKER_IMG        = qemu-system-riscv64
 
@@ -61,10 +61,10 @@ dump: build
 	riscv64-linux-gnu-objdump -S $(BINARY) | less
 
 run-docker: build
-	sudo docker image ls | \
-	grep $(DOCKER_IMG) \
-	    || sudo docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
-	sudo docker run --rm -it \
+	docker image ls | \
+	grep -oq $(DOCKER_IMG) || \
+	docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
+	docker run --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
 	    $(DOCKER_IMG) $(QEMU_FLAGS) /binary
 
