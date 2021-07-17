@@ -1,2 +1,15 @@
-[unstable]
-build-std = ["core", "compiler_builtins"]
+[build]
+target = "riscv64gc-unknown-none-elf"
+rustflags = ["-Clink-arg=-Tld/virt.ld", "--cfg", "platform=\"virt\""]
+
+[target.riscv64gc-unknown-none-elf]
+runner = """qemu-system-riscv64 \
+    -machine virt \
+    -cpu rv64 \
+    -m 32M \
+    -smp 1 \
+    -nographic \
+    -serial mon:stdio \
+    -bios none \
+    -kernel
+"""
