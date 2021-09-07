@@ -1,29 +1,29 @@
-SHELL             = /bin/bash
-NAME              = lab_os
+SHELL       = /bin/bash
+NAME        = lab-os
 
-RUST_FILES        = $(shell find . -type f -name '*.rs')
+RUST_FILES  = $(shell find . -type f -name '*.rs')
 
-TARGET            = riscv64gc-unknown-none-elf
+TARGET      = riscv64gc-unknown-none-elf
 
-DOCKER_DIR        = .
-DOCKERFILE        = $(DOCKER_DIR)/Dockerfile
-DOCKER_IMG        = qemu-system-riscv64
+DOCKER_DIR  = .
+DOCKERFILE  = $(DOCKER_DIR)/Dockerfile
+DOCKER_IMG  = qemu-system-riscv64
 
-CARGO_PROJ        = $(NAME)
-CARGO_FLAGS       = --verbose
+CARGO_PROJ  = $(NAME)
+CARGO_FLAGS = --verbose
 
-LINKER_FLAG       = -Clink-arg=-Tld/virt.ld
+LINKER_FLAG = -Clink-arg=-Tld/virt.ld
 
-BINARY            = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
+BINARY      = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
 
-QEMU              = qemu-system-riscv64
-QEMU_FLAGS        = -machine virt        \
-                    -cpu rv64 -m 32M     \
-                    -smp 1               \
-                    -nographic           \
-                    -serial mon:stdio    \
-                    -bios none           \
-                    -kernel
+QEMU        = qemu-system-riscv64
+QEMU_FLAGS  = -machine virt        \
+              -cpu rv64 -m 32M     \
+              -smp 1               \
+              -nographic           \
+              -serial mon:stdio    \
+              -bios none           \
+              -kernel
 
 
 default: build
@@ -43,7 +43,7 @@ fmt: $(RUST_FILES)
 
 check: $(RUST_FILES)
 	cd $(CARGO_PROJ) && \
-	cargo check $(CARGO_FLAGS);
+	cargo check $(CARGO_FLAGS)
 	rustfmt -q --check $(RUST_FILES)
 
 build: $(RUST_FILES)
