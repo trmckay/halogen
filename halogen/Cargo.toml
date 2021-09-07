@@ -1,0 +1,20 @@
+[package]
+name = "halogen-kernel"
+version = "0.1.0"
+authors = ["Trevor McKay <tm@trmckay.com>"]
+edition = "2018"
+
+[dependencies]
+spin = "0.9.*"
+riscv = "0.7.*"
+qemu-exit = "2.0.*"
+
+[dependencies.lazy_static]
+version = "1.4.*"
+features = ["spin_no_std"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
