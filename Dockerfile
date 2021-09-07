@@ -1,6 +1,5 @@
 FROM ubuntu:bionic
 
-# deps
 RUN apt update
 RUN apt install -y \
     git curl autoconf automake autotools-dev \

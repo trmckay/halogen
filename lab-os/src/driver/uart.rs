@@ -1,5 +1,9 @@
+pub use core::fmt::{Error, Write};
+
 use crate::{mmio_rd, mmio_wr};
-use core::fmt::{Error, Write};
+
+#[cfg(platform = "virt")]
+pub const DEV_UART0: usize = 0x1000_0000;
 
 /// Simple handle for the UART device.
 /// This is implemented as a struct so
@@ -17,18 +21,19 @@ impl UartDriver {
     /// Example:
     ///
     /// ```
-    /// pub const DEV_UART: usize = 0x1000;
-    /// let mut uart = Uart(DEV_UART);
+    /// pub const DEV_UART0: usize = 0x1000;
+    /// let mut uart = Uart(DEV_UART0);
     /// ```
     pub fn new(phys_addr: usize) -> UartDriver {
+        if cfg!(machine = "virt") {
+            mmio_wr!(phys_addr, 3, 0b11);
+            mmio_wr!(phys_addr, 2, 0b1);
+            mmio_wr!(phys_addr, 1, 0b1);
+        }
         UartDriver { phys_addr }
     }
 
-    pub fn init(&mut self) {
-        mmio_wr!(self.phys_addr, 3, 0b11);
-        mmio_wr!(self.phys_addr, 2, 0b1);
-        mmio_wr!(self.phys_addr, 1, 0b1);
-    }
+    pub fn init(&mut self) {}
 
     /// Read a single byte from the device.
     ///
@@ -76,9 +81,12 @@ impl Write for UartDriver {
 #[macro_export]
 macro_rules! print
 {
-    ($d:expr, $($args:tt)+) => ({
+    ($($args:tt)+) => ({
+        {
+        use crate::driver::uart::{UartDriver, DEV_UART0};
         use core::fmt::Write;
-        let _ = write!($d, $($args)+);
+        let _ = write!(UartDriver::new(DEV_UART0), $($args)+);
+        }
     });
 }
 
@@ -91,26 +99,13 @@ macro_rules! print
 #[macro_export]
 macro_rules! println
 {
-    ($d:expr) =>  ({
-        print!($d, "\n")
+    () =>  ({
+        print!("\n")
     });
-    ($d:expr, $fmt:expr) => ({
-        print!($d, concat!($fmt, "\n"))
+    ($fmt:expr) => ({
+        print!(concat!($fmt, "\n"))
     });
-    ($d:expr, $fmt:expr, $($args:tt)+) => ({
-        print!($d, concat!($fmt, "\n"), $($args)+)
+    ($fmt:expr, $($args:tt)+) => ({
+        print!(concat!($fmt, "\n"), $($args)+)
     });
-}
-
-/// Read a single character from the primary UART device.
-///
-/// Example:
-///
-/// ```
-/// ```
-#[macro_export]
-macro_rules! read_char {
-    () => {
-        (crate::driver::UartDriver::new(crate::driver::DEV_UART).read_byte() as char)
-    };
 }

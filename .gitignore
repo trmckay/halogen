@@ -1,11 +1,10 @@
-lab_os/target
-lab_os/Cargo.lock
+**/target
+**/build
+**/_build
+
+**/Cargo.lock
+
 .vscode
 .vim
-docs/build
 compile_commands.json
 .env
-docs/source/_build
-test/env/target
-test/env/Cargo.lock
-test/env/main.rs
