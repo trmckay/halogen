@@ -1,6 +1,7 @@
-name: "Sphinx docs"
+name: "Publish docs"
 on:
-  - push
+  push:
+    branches: [ main ]
 
 jobs:
   docs:

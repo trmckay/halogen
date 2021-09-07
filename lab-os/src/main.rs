@@ -19,17 +19,7 @@ mod boot;
 /// is complete, the system will jump here.
 #[no_mangle]
 pub extern "C" fn kernel_start() -> ! {
-    let mut uart = driver::UartDriver::new(driver::DEV_UART);
-    uart.init();
-
-    loop {
-        let c = read_char!();
-        if c == '!' {
-            panic!();
-        } else if c != '\0' {
-            print!(uart, "{}", c);
-        }
-    }
+    panic!();
 }
 
 /// CPU trap-handler. When the CPU issues a trap, it will jump
