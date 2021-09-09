@@ -7,9 +7,10 @@ TARGET      = riscv64gc-unknown-none-elf
 
 DOCKER_DIR  = .
 DOCKERFILE  = $(DOCKER_DIR)/Dockerfile
-DOCKER_IMG  = qemu-system-riscv64
+DOCKER_IMG  = qemu-riscv64
 
 CARGO_PROJ  = $(NAME)
+CARGO_TOML  = $(CARGO_PROJ)/Cargo.toml
 CARGO_FLAGS = --verbose
 
 LINKER_FLAG = -Clink-arg=-Tld/virt.ld
@@ -29,14 +30,16 @@ QEMU_FLAGS  = -machine virt        \
 default: build
 
 init:
-	cd $(CARGO_PROJ) && \
+	@echo "Configuring toolchain..."
+	@cd $(CARGO_PROJ) && \
 	rustup override set nightly && \
 	rustup target add riscv64gc-unknown-none-elf
-	# Install pre-commit hooks
-	echo -e \
+	@echo -e "\nInstalling hooks..."
+	@echo -e \
 	    '#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make check' \
 	    > .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo -e "\nDone."
 
 fmt: $(RUST_FILES)
 	rustfmt -q $(RUST_FILES)
@@ -46,28 +49,23 @@ check: $(RUST_FILES)
 	cargo check $(CARGO_FLAGS)
 	rustfmt -q --check $(RUST_FILES)
 
-build: $(RUST_FILES)
+build: $(RUST_FILES) $(CARGO_TOML)
 	cd $(CARGO_PROJ) && \
 	cargo build $(CARGO_FLAGS)
 
-run: $(RUST_FILES)
+run: $(RUST_FILES) $(CARGO_TOML)
 	cd $(CARGO_PROJ) && \
 	cargo run $(CARGO_FLAGS)
-
-test: $(RUST_FILES)
-	cd $(CARGO_PROJ) && \
-	cargo test $(CARGO_FLAGS)
 
 dump: build
 	riscv64-linux-gnu-objdump -S $(BINARY) | less
 
-run-docker: build
-	docker image ls | \
-	grep -oq $(DOCKER_IMG) || \
+image: $(DOCKERFILE)
 	docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
-	docker run --rm -it \
-	    -v `pwd`/$(BINARY):/binary:ro \
-	    $(DOCKER_IMG) $(QEMU_FLAGS) /binary
+
+docker: image build
+	(docker image ls | grep -oq $(DOCKER_IMG) || docker build -t $(DOCKER_IMG) $(DOCKER_DIR))
+	docker run --rm -it -v `pwd`/$(BINARY):/binary:ro $(DOCKER_IMG) $(QEMU_FLAGS) /binary
 
 clean:
 	cd $(CARGO_PROJ) && \
