@@ -52,7 +52,7 @@ SECTIONS
 
     /* memory begins here, not necessarily at zero */
     PROVIDE(_MEM = ORIGIN(ram));
-    PROVIDE(_MEM_SIZE = ORIGIN(ram) + LENGTH(ram));
+    PROVIDE(_MEM_END = ORIGIN(ram) + LENGTH(ram));
 
     /* allocate a statically sized chunk for kernel heap */
     PROVIDE(_K_STACK = _bss_end);
@@ -60,5 +60,5 @@ SECTIONS
 
     /* we can use the rest for kernel heap */
     PROVIDE(_K_HEAP = _K_STACK_END);
-    PROVIDE(_K_HEAP_SIZE = _MEM_SIZE - _K_HEAP);
+    PROVIDE(_K_HEAP_SIZE = _MEM_END - _K_HEAP);
 }
