@@ -7,6 +7,25 @@
 .option norvc
 .section .data
 
+# Expose these linker symbols to Rust.
+.global K_HEAP_BEGIN
+K_HEAP_BEGIN: .dword _K_HEAP
+
+.global K_HEAP_SIZE
+K_HEAP_SIZE: .dword _K_HEAP_SIZE
+
+.global K_STACK_BEGIN
+K_STACK_BEGIN: .dword _K_STACK
+
+.global K_STACK_END
+K_STACK_END: .dword _K_STACK_END
+
+.global TEXT_BEGIN
+TEXT_BEGIN: .dword _MEM
+
+.global MEM_END
+MEM_END: .dword _MEM_END
+
 .section .text.init
 
 .global _start
@@ -32,7 +51,7 @@ BSS_INIT_LOOP:
 BSS_INIT_DONE:
 
 # Initialize the stack pointer.
-    la    sp, _stack_end
+    la    sp, _K_STACK_END
 
 # Machine protected mode
 #               vv

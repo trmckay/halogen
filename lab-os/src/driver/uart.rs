@@ -1,6 +1,6 @@
 pub use core::fmt::{Error, Write};
 
-use crate::{mmio_rd, mmio_wr};
+use crate::{phys_read, phys_write};
 
 #[cfg(platform = "virt")]
 pub const DEV_UART0: usize = 0x1000_0000;
@@ -25,15 +25,8 @@ impl UartDriver {
     /// let mut uart = Uart(DEV_UART0);
     /// ```
     pub fn new(phys_addr: usize) -> UartDriver {
-        if cfg!(machine = "virt") {
-            mmio_wr!(phys_addr, 3, 0b11);
-            mmio_wr!(phys_addr, 2, 0b1);
-            mmio_wr!(phys_addr, 1, 0b1);
-        }
         UartDriver { phys_addr }
     }
-
-    pub fn init(&mut self) {}
 
     /// Read a single byte from the device.
     ///
@@ -44,7 +37,7 @@ impl UartDriver {
     /// ```
     #[inline]
     pub fn read_byte(&self) -> u8 {
-        return mmio_rd!(self.phys_addr);
+        return phys_read!(self.phys_addr);
     }
 
     /// Write a single byte to the device.
@@ -57,7 +50,7 @@ impl UartDriver {
     /// ```
     #[inline]
     pub fn write_byte(&mut self, byte: u8) {
-        mmio_wr!(self.phys_addr, byte as u8);
+        phys_write!(self.phys_addr, byte as u8);
     }
 }
 
@@ -82,11 +75,9 @@ impl Write for UartDriver {
 macro_rules! print
 {
     ($($args:tt)+) => ({
-        {
         use crate::driver::uart::{UartDriver, DEV_UART0};
         use core::fmt::Write;
         let _ = write!(UartDriver::new(DEV_UART0), $($args)+);
-        }
     });
 }
 

@@ -1,16 +1,6 @@
-/// Write to an MMIO address.
-///
-/// Examples:
-///
-/// ```
-/// // Write 17 to address 0x1000.
-/// mmio_wr!(0x1000, 17)
-///
-/// // Write 17 to address 0x1004.
-/// mmio_wr!(0x1000, 0x4, 17)
-/// ```
+/// Write to a physical address.
 #[macro_export]
-macro_rules! mmio_wr {
+macro_rules! phys_write {
     ($a:expr, $d:expr) => {
         unsafe {
             ($a as *mut u8).write_volatile($d);
@@ -23,19 +13,9 @@ macro_rules! mmio_wr {
     };
 }
 
-/// Read from an MMIO address.
-///
-/// Examples:
-///
-/// ```
-/// // Read from address 0x1000.
-/// mmio_wr!(0x1000, 17)
-///
-/// // Read from address 0x1004.
-/// mmio_wr!(0x1000, 0x4, 17)
-/// ```
+/// Read from a physical address.
 #[macro_export]
-macro_rules! mmio_rd {
+macro_rules! phys_read {
     ($a:expr) => {
         unsafe { ($a as *mut u8).read_volatile() }
     };
