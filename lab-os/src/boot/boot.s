@@ -37,7 +37,7 @@ _start:
 
 .option push
 .option norelax
-    la    gp, _global_pointer
+ la    gp, _global_pointer
 .option pop
 
 # Initialize BSS section to zero for newly allocated memory.
@@ -51,28 +51,26 @@ BSS_INIT_LOOP:
 BSS_INIT_DONE:
 
 # Initialize the stack pointer.
-    la    sp, _K_STACK_END
+la    sp, _K_STACK_END
 
 # Machine protected mode
-#               vv
-    li    t0, 0b110010001000
-#                   ^   ^
+#           vv
+li    t0, 0b110010001000
+#               ^   ^
 #           Enable interrupts
-    csrw  mstatus, t0
+csrw  mstatus, t0
 
 # Go here (to the kernel) when we're done.
-    la    t1, kernel_start
-    csrw  mepc, t1
+la    t1, kernel_start
+csrw  mepc, t1
 
 # Also need to initialize the machine trap vector.
-    la    t2, mtrap_vector
-    csrw  mtvec, t2
+la    t2, _mtrap_vector
+csrw  mtvec, t2
 
-# More magic numbers!
-    li    t3, 0b100010001000
-    csrw  mie, t3
-    la    ra, SLEEP
-    mret
+la    ra, SLEEP
+csrw  mie, zero
+mret
 
 SLEEP:
     wfi
