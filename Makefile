@@ -5,9 +5,10 @@ RUST_FILES  = $(shell find . -type f -name '*.rs')
 
 TARGET      = riscv64gc-unknown-none-elf
 
-DOCKER_DIR  = .
+DOCKER_DIR  = docker
 DOCKERFILE  = $(DOCKER_DIR)/Dockerfile
-DOCKER_IMG  = qemu-riscv64
+DOCKER_IMG  = trmckay/riscv-rv64gc-dev
+DOCKER_NET  = lab-os-gdb
 
 CARGO_PROJ  = $(NAME)
 CARGO_TOML  = $(CARGO_PROJ)/Cargo.toml
@@ -16,56 +17,71 @@ CARGO_FLAGS = --verbose
 LINKER_FLAG = -Clink-arg=-Tld/virt.ld
 
 BINARY      = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
+GDB         = riscv64-unknown-linux-gnu-gdb
+
+OBJDUMP     = riscv64-linux-gnu-objdump
 
 QEMU        = qemu-system-riscv64
 QEMU_FLAGS  = -machine virt        \
               -cpu rv64 -m 32M     \
-              -smp 1               \
+              -smp 2               \
               -nographic           \
               -serial mon:stdio    \
               -bios none           \
               -kernel
 
-
 default: build
 
 init:
-	@echo "Configuring toolchain..."
-	@cd $(CARGO_PROJ) && \
-	rustup override set nightly && \
-	rustup target add riscv64gc-unknown-none-elf
-	@echo -e "\nInstalling hooks..."
-	@echo -e \
-	    '#!/bin/bash\n\ncd $$(git rev-parse --show-toplevel) && make check' \
-	    > .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo -e "\nDone."
+	bin/init.sh
 
-fmt: $(RUST_FILES)
+format: $(RUST_FILES)
 	rustfmt -q $(RUST_FILES)
-
-check: $(RUST_FILES)
-	cd $(CARGO_PROJ) && \
-	cargo check $(CARGO_FLAGS)
-	rustfmt -q --check $(RUST_FILES)
 
 build: $(RUST_FILES) $(CARGO_TOML)
 	cd $(CARGO_PROJ) && \
 	cargo build $(CARGO_FLAGS)
 
-run: $(RUST_FILES) $(CARGO_TOML)
-	cd $(CARGO_PROJ) && \
-	cargo run $(CARGO_FLAGS)
+check: build
+	rustfmt --check $(RUST_FILES)
 
-dump: build
-	riscv64-linux-gnu-objdump -S $(BINARY) | less
+image:
+	docker image ls | grep -oq $(DOCKER_IMG) || \
+	    docker pull trmckay/riscv-rv64gc-dev
 
-image: $(DOCKERFILE)
-	docker build -t $(DOCKER_IMG) $(DOCKER_DIR)
+gdb-server: build
+	docker network ls | grep -oq lab-os-gdb || \
+	    docker network create lab-os-gdb
+	docker run \
+	    --rm -it \
+	    -v `pwd`/$(BINARY):/binary:ro \
+	    --network $(DOCKER_NET) \
+	    --name lab-os-gdb-server \
+	    $(DOCKER_IMG) $(QEMU) -s -S $(QEMU_FLAGS) /binary
 
-docker: image build
-	(docker image ls | grep -oq $(DOCKER_IMG) || docker build -t $(DOCKER_IMG) $(DOCKER_DIR))
-	docker run --rm -it -v `pwd`/$(BINARY):/binary:ro $(DOCKER_IMG) $(QEMU_FLAGS) /binary
+gdb-attach: image build
+	docker network ls | grep -oq lab-os-gdb || \
+	    docker network create lab-os-gdb
+	docker run \
+	    --rm -it \
+	    -v `pwd`/$(BINARY):/binary:ro \
+	    -v `pwd`/$(NAME)/src:/root/src:ro \
+	    -v `pwd`/docker/gdbinit:/root/.gdbinit:ro \
+	    --network $(DOCKER_NET) \
+	    --name lab-os-gdb-frontend \
+	    $(DOCKER_IMG) $(GDB) -q /binary
+
+run: image build
+	docker run \
+	    --rm -it \
+	    -v `pwd`/$(BINARY):/binary:ro \
+	    $(DOCKER_IMG) $(QEMU) $(QEMU_FLAGS) /binary
+
+dump: image build
+	docker run \
+	    --rm -it \
+	    -v `pwd`/$(BINARY):/binary:ro \
+            $(DOCKER_IMAGE) $(OBJDUMP) -S $(BINARY) | less
 
 clean:
 	cd $(CARGO_PROJ) && \
