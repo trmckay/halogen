@@ -3,34 +3,28 @@
 #![feature(panic_info_message, global_asm, asm, exclusive_range_pattern)]
 #![allow(dead_code)]
 
-/// Delivers functionality related to debugging and error-reporting.
-mod debug;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
-/// Contains device drivers and platform-specific code.
-mod driver;
-
-/// Implements the `panic` language feature.
-mod panic;
-
-/// Contains code run right after boot.
 mod boot;
-
-/// General utility macros and functions.
+mod cpu;
+mod debug;
+mod driver;
+mod mem;
+mod panic;
+mod trap;
 mod util;
 
-/// Drivers relating to memory.
-mod mem;
+lazy_static! {
+    // Initialize a UART writer behind a spinlock mutex.
+    pub static ref UART: Mutex<driver::uart::UartWriter> = Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+}
 
 /// Entry-point for the kernel. After the assembly-based set-up
 /// is complete, the system will jump here.
 #[no_mangle]
 pub extern "C" fn kernel_start() -> ! {
-    // Init NS16550 UART device.
-    if cfg!(machine = "virt") {
-        phys_write!(driver::uart::DEV_UART0, 3, 0b11);
-        phys_write!(driver::uart::DEV_UART0, 2, 0b1);
-        phys_write!(driver::uart::DEV_UART0, 1, 0b1);
-    }
+    mem::pages::heap_init();
 
     println!("\nlab-os kernel v0.1.0");
     for _ in 0..64 {
@@ -42,34 +36,22 @@ pub extern "C" fn kernel_start() -> ! {
         "Text:  {:p}..{:p} ({:5} KB)",
         text_begin!(),
         text_end!(),
-        text_size!() / (8 * 1024)
+        text_size!() / 1024
     );
     println!(
         "Stack: {:p}..{:p} ({:5} KB)",
         k_stack_begin!(),
         k_stack_end!(),
-        k_stack_size!() / (8 * 1024)
+        k_stack_size!() / 1024
     );
     println!(
         "Heap:  {:p}..{:p} ({:5} KB)",
         k_heap_begin!(),
         k_heap_end!(),
-        k_heap_size!() / (8 * 1024)
+        k_heap_size!() / 1024
     );
 
-    mem::pages::init_heap();
+    mem::pages::heap_dump();
 
-    println!();
-    mem::pages::dump_free_blocks();
-
-    loop {}
-}
-
-/// CPU trap-handler. When the CPU issues a trap, it will jump
-/// here.
-#[no_mangle]
-pub extern "C" fn mtrap_vector() {
-    unsafe {
-        asm!("mret");
-    }
+    panic!();
 }

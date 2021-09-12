@@ -1,4 +1,4 @@
-pub use core::fmt::{Error, Write};
+pub use core::fmt::{Arguments, Error, Write};
 
 use crate::{phys_read, phys_write};
 
@@ -11,11 +11,11 @@ pub const DEV_UART0: usize = 0x1000_0000;
 ///
 /// We also have the advantage of enforcing
 /// a mutable access on writes.
-pub struct UartDriver {
+pub struct UartWriter {
     phys_addr: usize,
 }
 
-impl UartDriver {
+impl UartWriter {
     /// Read a single byte from the device.
     ///
     /// Example:
@@ -24,8 +24,13 @@ impl UartDriver {
     /// pub const DEV_UART0: usize = 0x1000;
     /// let mut uart = Uart(DEV_UART0);
     /// ```
-    pub fn new(phys_addr: usize) -> UartDriver {
-        UartDriver { phys_addr }
+    pub fn new(phys_addr: usize) -> UartWriter {
+        if cfg!(machine = "virt") {
+            phys_write!(DEV_UART0, 3, 0b11);
+            phys_write!(DEV_UART0, 2, 0b1);
+            phys_write!(DEV_UART0, 1, 0b1);
+        }
+        UartWriter { phys_addr }
     }
 
     /// Read a single byte from the device.
@@ -56,7 +61,7 @@ impl UartDriver {
 
 // Implement the `Write` trait so we can
 // print format strings.
-impl Write for UartDriver {
+impl Write for UartWriter {
     fn write_str(&mut self, s: &str) -> Result<(), Error> {
         for b in s.bytes() {
             self.write_byte(b);
@@ -65,38 +70,20 @@ impl Write for UartDriver {
     }
 }
 
-/// Print a format string to the UART device.
-///
-/// Example:
-///
-/// ```
-/// ```
-#[macro_export]
-macro_rules! print
-{
-    ($($args:tt)+) => ({
-        use crate::driver::uart::{UartDriver, DEV_UART0};
-        use core::fmt::Write;
-        let _ = write!(UartDriver::new(DEV_UART0), $($args)+);
-    });
+#[doc(hidden)]
+pub fn _print(args: Arguments) {
+    #[allow(unused_imports)]
+    use core::fmt::Write;
+    crate::UART.lock().write_fmt(args).unwrap();
 }
 
-/// Print a format string to the UART device with a trailing newline.
-///
-/// Example:
-///
-/// ```
-/// ```
 #[macro_export]
-macro_rules! println
-{
-    () =>  ({
-        print!("\n")
-    });
-    ($fmt:expr) => ({
-        print!(concat!($fmt, "\n"))
-    });
-    ($fmt:expr, $($args:tt)+) => ({
-        print!(concat!($fmt, "\n"), $($args)+)
-    });
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::driver::uart::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
