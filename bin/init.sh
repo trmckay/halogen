@@ -1,8 +1,19 @@
 #!/bin/bash
 
+echo -e "\nThis script will:"
+echo -e "\t* Install pre-commit hooks."
+echo -e "\t* Install the required Rust toolchain."
+echo -e "\t* Pull a Docker image with QEMU 5.2.0 and the RISCV GNU toolchain.\n"
+
+read -r -p "Total disk space required is between 750 MB and 1 GB. Continue? [Y/n] " res
+if [[ $res == "n" || $res == "N" ]]; then
+    echo "Aborting."
+    exit 0
+fi
+
 set -e
 
-ln -svf $(pwd)/bin/pre-commit.sh .git/hooks/pre-commit
+ln -svf "$(pwd)"/bin/pre-commit.sh .git/hooks/pre-commit
 
 if ! command -v rustup > /dev/null; then
     echo "Error: cannot find rustup."
