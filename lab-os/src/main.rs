@@ -1,10 +1,21 @@
 #![no_std]
 #![no_main]
-#![feature(panic_info_message, global_asm, asm, exclusive_range_pattern)]
+#![feature(
+    panic_info_message,
+    global_asm,
+    asm,
+    exclusive_range_pattern,
+    custom_test_frameworks
+)]
 #![allow(dead_code)]
+#![test_runner(test::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 use lazy_static::lazy_static;
 use spin::Mutex;
+
+#[cfg(not(test))]
+use mem::page::PageAllocator;
 
 mod boot;
 mod cpu;
@@ -15,16 +26,21 @@ mod panic;
 mod trap;
 mod util;
 
+#[cfg(not(test))]
 lazy_static! {
-    // Initialize a UART writer behind a spinlock mutex.
-    pub static ref UART: Mutex<driver::uart::UartWriter> = Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+    pub static ref UART: Mutex<driver::uart::UartWriter> =
+        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+    pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
+    pub static ref PAGE_ALLOCATOR: mem::page::ll_alloc::LinkedListAllocator =
+        mem::page::ll_alloc::LinkedListAllocator;
 }
 
 /// Entry-point for the kernel. After the assembly-based set-up
 /// is complete, the system will jump here.
+#[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn kernel_start() -> ! {
-    mem::pages::heap_init();
+    PAGE_ALLOCATOR.init();
 
     println!("\nlab-os kernel v0.1.0");
     for _ in 0..64 {
@@ -51,7 +67,22 @@ pub extern "C" fn kernel_start() -> ! {
         k_heap_size!() / 1024
     );
 
-    mem::pages::heap_dump();
-
     panic!();
+}
+
+#[cfg(test)]
+mod test;
+
+#[cfg(test)]
+lazy_static! {
+    pub static ref UART: Mutex<driver::uart::UartWriter> =
+        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+    pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
+}
+
+#[cfg(test)]
+#[no_mangle]
+pub extern "C" fn kernel_start() -> ! {
+    test_main();
+    loop {}
 }

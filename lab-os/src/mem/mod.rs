@@ -1,7 +1,5 @@
-/// Macros for physical memory.
+pub mod page;
 pub mod phys;
-
-pub mod pages;
 
 pub const NULL_PTR: *const u8 = 0 as *const u8;
 pub const NULL_PTR_MUT: *mut u8 = 0 as *mut u8;

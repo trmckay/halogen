@@ -17,6 +17,7 @@ CARGO_FLAGS = --verbose
 LINKER_FLAG = -Clink-arg=-Tld/virt.ld
 
 BINARY      = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
+
 GDB         = riscv64-unknown-linux-gnu-gdb
 
 OBJDUMP     = riscv64-linux-gnu-objdump
@@ -36,33 +37,34 @@ init:
 	bin/init.sh
 
 format: $(RUST_FILES)
-	rustfmt -q $(RUST_FILES)
+	rustfmt $(RUST_FILES)
 
 build: $(RUST_FILES) $(CARGO_TOML)
-	cd $(CARGO_PROJ) && \
+	@cd $(CARGO_PROJ) && \
 	cargo build $(CARGO_FLAGS)
 
-check: build
-	rustfmt --check $(RUST_FILES)
-
-image:
-	docker image ls | grep -oq $(DOCKER_IMG) || \
-	    docker pull trmckay/riscv-rv64gc-dev
+test: $(RUST_FILES) $(CARGO_TOML)
+	@docker run --rm \
+	    -v \
+		$(shell \
+	            cd $(CARGO_PROJ) && cargo test $(CARGO_FLAGS) --no-run --message-format=json | \
+	            jq -r --slurp '.[-2]["executable"]' \
+		):/binary:ro \
+	    $(DOCKER_IMG) $(QEMU) $(QEMU_FLAGS) /binary
 
 gdb-server: build
-	docker network ls | grep -oq lab-os-gdb || \
-	    docker network create lab-os-gdb
-	docker run \
-	    --rm -it \
+	@docker network ls | grep -oq $(DOCKER_NET) || \
+	    docker network create $(DOCKER_NET)
+	@docker run --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
 	    --network $(DOCKER_NET) \
 	    --name lab-os-gdb-server \
 	    $(DOCKER_IMG) $(QEMU) -s -S $(QEMU_FLAGS) /binary
 
-gdb-attach: image build
-	docker network ls | grep -oq lab-os-gdb || \
-	    docker network create lab-os-gdb
-	docker run \
+gdb-attach: build
+	@docker network ls | grep -oq $(DOCKER_NET) || \
+	    docker network create $(DOCKER_NET)
+	@docker run \
 	    --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
 	    -v `pwd`/$(NAME)/src:/root/src:ro \
@@ -71,18 +73,21 @@ gdb-attach: image build
 	    --name lab-os-gdb-frontend \
 	    $(DOCKER_IMG) $(GDB) -q /binary
 
-run: image build
-	docker run \
+run: build
+	@docker run \
 	    --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
 	    $(DOCKER_IMG) $(QEMU) $(QEMU_FLAGS) /binary
 
-dump: image build
-	docker run \
+dump: build
+	@docker run \
 	    --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
             $(DOCKER_IMAGE) $(OBJDUMP) -S $(BINARY) | less
 
 clean:
-	cd $(CARGO_PROJ) && \
+	@cd $(CARGO_PROJ) && \
 	cargo clean
+
+check-format:
+	rustfmt --check $(RUST_FILES)
