@@ -1,7 +1,7 @@
 #[cfg(not(test))]
 mod _panic {
 
-    use crate::println;
+    use crate::{exit_failure, println};
     use core::panic::PanicInfo;
 
     #[cfg(dump_on_panic)]
@@ -31,6 +31,6 @@ mod _panic {
         #[cfg(dump_on_panic)]
         print_dump(text_begin!(), text_size!());
 
-        loop {}
+        exit_failure!();
     }
 }

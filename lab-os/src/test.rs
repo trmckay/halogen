@@ -1,6 +1,6 @@
 // Source: Phillip Opperman, https://os.phil-opp.com/testing/
 
-use crate::{print, println};
+use crate::{exit_failure, exit_success, print, println};
 use core::panic::PanicInfo;
 
 pub trait TestCase {
@@ -23,12 +23,12 @@ pub fn test_runner(tests: &[&dyn TestCase]) -> ! {
     for test in tests {
         test.run();
     }
-    loop {}
+    exit_success!();
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("failed!\n");
     println!("Error: {}\n", info);
-    loop {}
+    exit_failure!();
 }

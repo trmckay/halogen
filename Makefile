@@ -37,14 +37,14 @@ init:
 	bin/init.sh
 
 format: $(RUST_FILES)
-	rustfmt -q $(RUST_FILES)
+	rustfmt $(RUST_FILES)
 
 build: $(RUST_FILES) $(CARGO_TOML)
 	@cd $(CARGO_PROJ) && \
 	cargo build $(CARGO_FLAGS)
 
 test: $(RUST_FILES) $(CARGO_TOML)
-	@docker run --rm -it \
+	@docker run --rm \
 	    -v \
 		$(shell \
 	            cd $(CARGO_PROJ) && cargo test $(CARGO_FLAGS) --no-run --message-format=json | \

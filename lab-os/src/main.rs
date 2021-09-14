@@ -28,14 +28,11 @@ mod util;
 
 #[cfg(not(test))]
 lazy_static! {
-    // Initialize a UART writer behind a spinlock mutex.
-    pub static ref UART: Mutex<driver::uart::UartWriter> = Mutex::new(
-        driver::uart::UartWriter::new(driver::uart::DEV_UART0)
-    );
-
-
-    #[cfg(ll_alloc)]
-    pub static ref PAGE_ALLOCATOR: mem::page::ll_alloc::LinkedListAllocator = mem::page::ll_alloc::LinkedListAllocator;
+    pub static ref UART: Mutex<driver::uart::UartWriter> =
+        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+    pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
+    pub static ref PAGE_ALLOCATOR: mem::page::ll_alloc::LinkedListAllocator =
+        mem::page::ll_alloc::LinkedListAllocator;
 }
 
 /// Entry-point for the kernel. After the assembly-based set-up
@@ -78,10 +75,9 @@ mod test;
 
 #[cfg(test)]
 lazy_static! {
-    // Initialize a UART writer behind a spinlock mutex.
-    pub static ref UART: Mutex<driver::uart::UartWriter> = Mutex::new(
-        driver::uart::UartWriter::new(driver::uart::DEV_UART0)
-    );
+    pub static ref UART: Mutex<driver::uart::UartWriter> =
+        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+    pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
 }
 
 #[cfg(test)]
