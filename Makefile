@@ -1,27 +1,25 @@
 SHELL       = /bin/bash
 NAME        = lab-os
-
 RUST_FILES  = $(shell find . -type f -name '*.rs')
 
 TARGET      = riscv64gc-unknown-none-elf
-
+QEMU_MACHN  = virt
+PG_ALLOC    = ll_alloc
 DOCKER_DIR  = docker
 DOCKERFILE  = $(DOCKER_DIR)/Dockerfile
 DOCKER_IMG  = trmckay/riscv-rv64gc-dev
 DOCKER_NET  = lab-os-gdb
-
 CARGO_PROJ  = $(NAME)
 CARGO_TOML  = $(CARGO_PROJ)/Cargo.toml
-CARGO_FLAGS = --verbose
-
-LINKER_FLAG = -Clink-arg=-Tld/virt.ld
-
+CARGO_FLAGS = --verbose --target $(TARGET)
+RUSTC_FLAGS = --cfg platform=\"$(QEMU_MACHN)\" \
+	      -g \
+	      --emit=obj,link \
+	      --cfg "$(PG_ALLOC)" \
+	      -Clink-arg=-Tlink.ld
 BINARY      = $(CARGO_PROJ)/target/$(TARGET)/debug/$(NAME)
-
 GDB         = riscv64-unknown-linux-gnu-gdb
-
 OBJDUMP     = riscv64-linux-gnu-objdump
-
 QEMU        = qemu-system-riscv64
 QEMU_FLAGS  = -machine virt        \
               -cpu rv64 -m 32M     \
@@ -41,13 +39,15 @@ format: $(RUST_FILES)
 
 build: $(RUST_FILES) $(CARGO_TOML)
 	@cd $(CARGO_PROJ) && \
-	cargo build $(CARGO_FLAGS)
+	CARGO_BUILD_RUSTFLAGS="$(RUSTC_FLAGS)" cargo build $(CARGO_FLAGS)
 
 test: $(RUST_FILES) $(CARGO_TOML)
 	@docker run --rm \
 	    -v \
 		$(shell \
-	            cd $(CARGO_PROJ) && cargo test $(CARGO_FLAGS) --no-run --message-format=json | \
+	            cd $(CARGO_PROJ) && \
+		    	CARGO_BUILD_RUSTFLAGS="$(RUSTC_FLAGS)" \
+			cargo test $(CARGO_FLAGS) --no-run --message-format=json | \
 	            jq -r --slurp '.[-2]["executable"]' \
 		):/binary:ro \
 	    $(DOCKER_IMG) $(QEMU) $(QEMU_FLAGS) /binary
