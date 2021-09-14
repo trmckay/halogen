@@ -52,13 +52,6 @@ test: $(RUST_FILES) $(CARGO_TOML)
 		):/binary:ro \
 	    $(DOCKER_IMG) $(QEMU) $(QEMU_FLAGS) /binary
 
-check: build
-	rustfmt --check $(RUST_FILES)
-
-image:
-	@docker image ls | grep -oq $(DOCKER_IMG) || \
-	    docker pull trmckay/riscv-rv64gc-dev
-
 gdb-server: build
 	@docker network ls | grep -oq $(DOCKER_NET) || \
 	    docker network create $(DOCKER_NET)
@@ -68,7 +61,7 @@ gdb-server: build
 	    --name lab-os-gdb-server \
 	    $(DOCKER_IMG) $(QEMU) -s -S $(QEMU_FLAGS) /binary
 
-gdb-attach: image build
+gdb-attach: build
 	@docker network ls | grep -oq $(DOCKER_NET) || \
 	    docker network create $(DOCKER_NET)
 	@docker run \
@@ -80,13 +73,13 @@ gdb-attach: image build
 	    --name lab-os-gdb-frontend \
 	    $(DOCKER_IMG) $(GDB) -q /binary
 
-run: image build
+run: build
 	@docker run \
 	    --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
 	    $(DOCKER_IMG) $(QEMU) $(QEMU_FLAGS) /binary
 
-dump: image build
+dump: build
 	@docker run \
 	    --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
@@ -95,3 +88,6 @@ dump: image build
 clean:
 	@cd $(CARGO_PROJ) && \
 	cargo clean
+
+check-format:
+	rustfmt --check $(RUST_FILES)

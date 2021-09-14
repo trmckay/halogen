@@ -1,5 +1,5 @@
 // Source: Phillip Opperman, https://os.phil-opp.com/testing/
-use crate::util::heap_clear;
+
 use crate::{print, println};
 use core::panic::PanicInfo;
 
