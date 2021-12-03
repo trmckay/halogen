@@ -5,14 +5,14 @@ RUST_FILES  = $(shell find . -type f -name '*.rs')
 TARGET      = riscv64gc-unknown-none-elf
 
 DOCKER_DIR  = docker
-ifeq ($(PULL),1)
-DOCKER_IMG  = trmckay/riscv-toolchain
-else
+ifeq ($(BUILD_IMG),1)
 DOCKER_IMG  = riscv-toolchain
+else
+DOCKER_IMG  = trmckay/riscv-toolchain
 endif
 DOCKER_NET  = halogen-gdb
 
-CARGO_PROJ  = $(NAME)
+CARGO_PROJ  = kernel
 CARGO_TOML  = $(CARGO_PROJ)/Cargo.toml
 CARGO_FLAGS = --verbose --target $(TARGET)
 RUSTC_FLAGS = --cfg platform=\"$(QEMU_MACHN)\" \
@@ -100,7 +100,7 @@ gdb-attach: build docker
 	@docker run \
 	    --rm -it \
 	    -v `pwd`/$(BINARY):/binary:ro \
-	    -v `pwd`/$(NAME)/src:/root/src:ro \
+	    -v `pwd`/$(CARGO_PROJ)/src:/root/src:ro \
 	    -v `pwd`/docker/gdbinit:/root/.gdbinit:ro \
 	    --network $(DOCKER_NET) \
 	    --name halogen-gdb-frontend \
@@ -122,8 +122,8 @@ dump: build docker
 
 .PHONY: clean
 clean:
-	@cd $(CARGO_PROJ) && \
-	cargo clean
+	cd $(CARGO_PROJ) && \
+	cargo clean -v
 
 .PHONY: check-format
 check-format:
