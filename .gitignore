@@ -1,0 +1,10 @@
+**/target
+**/build
+**/_build
+
+**/Cargo.lock
+
+.vscode
+.vim
+compile_commands.json
+.env
