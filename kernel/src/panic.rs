@@ -2,6 +2,7 @@
 mod _panic {
 
     use crate::{ansi, exit_failure, println};
+    use core::arch::asm;
     use core::panic::PanicInfo;
 
     #[cfg(dump_on_panic)]

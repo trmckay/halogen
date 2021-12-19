@@ -69,8 +69,7 @@ la    t2, _mtrap_vector
 csrw  mtvec, t2
 
 la    ra, SLEEP
-csrw  mie, zero
-mret
+call kernel_start
 
 SLEEP:
     wfi

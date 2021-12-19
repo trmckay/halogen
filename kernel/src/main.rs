@@ -1,12 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(
-    panic_info_message,
-    global_asm,
-    asm,
-    exclusive_range_pattern,
-    custom_test_frameworks
-)]
+#![feature(panic_info_message, exclusive_range_pattern, custom_test_frameworks)]
 #![allow(dead_code)]
 #![test_runner(test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
@@ -26,7 +20,7 @@ mod util;
 #[cfg(not(test))]
 lazy_static! {
     pub static ref UART: Mutex<driver::uart::UartWriter> =
-        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART));
     pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
 }
 
@@ -64,7 +58,7 @@ pub extern "C" fn kernel_start() -> ! {
         k_heap_size!() / 1024
     );
 
-    panic!();
+    panic!("end of kernel_start");
 }
 
 #[cfg(test)]
@@ -73,7 +67,7 @@ mod test;
 #[cfg(test)]
 lazy_static! {
     pub static ref UART: Mutex<driver::uart::UartWriter> =
-        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART0));
+        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART));
     pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
 }
 
@@ -81,5 +75,5 @@ lazy_static! {
 #[no_mangle]
 pub extern "C" fn kernel_start() -> ! {
     test_main();
-    loop {}
+    exit_success!();
 }

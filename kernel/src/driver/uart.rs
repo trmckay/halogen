@@ -3,7 +3,7 @@ pub use core::fmt::{Arguments, Error, Write};
 use crate::{phys_read, phys_write};
 
 #[cfg(platform = "virt")]
-pub const DEV_UART0: usize = 0x1000_0000;
+pub const DEV_UART: usize = 0x1000_0000;
 
 /// Simple handle for the UART device.
 /// This is implemented as a struct so

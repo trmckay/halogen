@@ -15,6 +15,7 @@ else
     ( \
         cd kernel && \
         rustup override set nightly && \
-        rustup target add riscv64gc-unknown-none-elf
+        rustup target add riscv64gc-unknown-none-elf && \
+        rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
     )
 fi

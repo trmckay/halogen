@@ -1,0 +1,32 @@
+name: "Unit tests"
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main, development ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Configure toolchain
+      run: make init
+    - name: Check format
+      run: make fmt-check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install dependencies
+      run: sudo apt install -y qemu-system-riscv64
+    - name: Configure toolchain
+      run: make init
+    - name: Run tests
+      run: make test

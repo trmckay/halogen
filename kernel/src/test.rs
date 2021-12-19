@@ -4,7 +4,7 @@ use crate::{ansi, exit_failure, exit_success, print, println};
 use core::panic::PanicInfo;
 
 pub trait TestCase {
-    fn run(&self) -> ();
+    fn run(&self);
 }
 
 impl<T> TestCase for T
