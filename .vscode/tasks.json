@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "make && qemu-system-riscv64 -machine virt -cpu rv64 -m 256m -smp 1 -nographic -serial mon:stdio -bios none -s -S -kernel ${workspaceFolder}/kernel/target/riscv64gc-unknown-none-elf/debug/halogen",
+			"command": "HALOGEN_DEBUG=1 make run",
 			"isBackground": true,
 			"problemMatcher": {
 				"pattern": {
@@ -15,7 +15,23 @@
 					"endsPattern": "Finished"
 				}
 			},
-			"label": "GDB server"
+			"label": "GDB server - run"
+		},
+		{
+			"type": "shell",
+			"command": "HALOGEN_DEBUG=1 make test",
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": ""
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": " ",
+					"endsPattern": "Finished"
+				}
+			},
+			"label": "GDB server - test"
 		}
 	]
 }

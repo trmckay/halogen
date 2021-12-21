@@ -24,15 +24,23 @@ release: $(RUST_FILES) $(CARGO_TOML)
 test: $(RUST_FILES) $(CARGO_TOML)
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) test
 
+.PHONY: test-debug
+test-debug: $(RUST_FILES) $(CARGO_TOML)
+	cd $(CARGO_PROJ) && HALOGEN_DEBUG=1 cargo $(CARGO_FLAGS) test
+
 .PHONY: run
 run: build
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) run
+
+.PHONY: run-debug
+run-debug: $(RUST_FILES) $(CARGO_TOML)
+	cd $(CARGO_PROJ) && HALOGEN_DEBUG=1 cargo $(CARGO_FLAGS) run
 
 .PHONY: clean
 clean:
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) clean
 
-.PHONY: fmt-check
+.PHONY: fmt
 fmt:
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) fmt
 

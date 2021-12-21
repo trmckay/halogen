@@ -3,4 +3,4 @@ target = "riscv64gc-unknown-none-elf"
 
 [target.riscv64gc-unknown-none-elf]
 rustflags = ["--cfg", 'platform="virt"', "-g", "--emit=obj,link", "-Clink-arg=-Tlink.ld"]
-runner = "qemu-system-riscv64 -machine virt -cpu rv64 -m 256m -smp 1 -nographic -serial mon:stdio -bios none -kernel"
+runner = "../bin/runner.sh"
