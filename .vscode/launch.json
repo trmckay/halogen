@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug - run",
+            "name": "Run",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/kernel/target/riscv64gc-unknown-none-elf/debug/halogen",
+            "program": "${workspaceFolder}/.halogen-kernel.tmp",
             "args": [],
             "stopAtEntry": false,
             "environment": [],
@@ -24,10 +24,10 @@
             ]
         },
         {
-            "name": "Debug - test",
+            "name": "Test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/kernel/target/riscv64gc-unknown-none-elf/debug/halogen",
+            "program": "${workspaceFolder}/.halogen-kernel.tmp",
             "args": [],
             "stopAtEntry": false,
             "environment": [],

@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "HALOGEN_DEBUG=1 make run",
+			"command": "make run-debug",
 			"isBackground": true,
 			"problemMatcher": {
 				"pattern": {
@@ -19,7 +19,7 @@
 		},
 		{
 			"type": "shell",
-			"command": "HALOGEN_DEBUG=1 make test",
+			"command": "make test-debug",
 			"isBackground": true,
 			"problemMatcher": {
 				"pattern": {

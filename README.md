@@ -24,7 +24,7 @@ A simple OS kernel for RISC-V made with Rust.
 
 ### Debugging
 
-Run or test with `HALOGEN_DEBUG=1` to launch a GDB server at `localhost:1234`. Attach to it
-with `riscv64-unknown-elf-gdb`
+Run `make run-debug` or `make test-debug` to launch a GDB server for that task. Attach to the
+server with `make attach` in another terminal.
 
 Alternatively, open the repository with VS Code and use the provided `launch.json`.

@@ -3,4 +3,4 @@ target = "riscv64gc-unknown-none-elf"
 
 [target.riscv64gc-unknown-none-elf]
 rustflags = ["--cfg", 'platform="virt"', "-g", "--emit=obj,link", "-Clink-arg=-Tlink.ld"]
-runner = "../bin/runner.sh"
+runner = "../bin/run.sh"

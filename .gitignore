@@ -1,3 +1,5 @@
 **/target
 **/Cargo.lock
+.halogen-kernel.tmp
 .vim
+.gdbinit

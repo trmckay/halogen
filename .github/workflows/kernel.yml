@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Configure toolchain
-      run: make init
+      run: NONINTERACTIVE=1 make init
     - name: Check format
       run: make fmt-check
 
@@ -27,6 +27,6 @@ jobs:
     - name: Install dependencies
       run: sudo apt install -y qemu-system-riscv64
     - name: Configure toolchain
-      run: make init
+      run: NONINTERACTIVE=1 make init
     - name: Run tests
       run: make test

@@ -36,6 +36,10 @@ run: build
 run-debug: $(RUST_FILES) $(CARGO_TOML)
 	cd $(CARGO_PROJ) && HALOGEN_DEBUG=1 cargo $(CARGO_FLAGS) run
 
+.PHONY: attach
+attach:
+	bin/attach.sh
+
 .PHONY: clean
 clean:
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) clean
