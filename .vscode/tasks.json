@@ -3,6 +3,16 @@
 	"tasks": [
 		{
 			"type": "shell",
+			"command": "make",
+			"problemMatcher": [],
+			"label": "make",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "shell",
 			"command": "make run-debug",
 			"isBackground": true,
 			"problemMatcher": {

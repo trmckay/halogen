@@ -1,8 +1,7 @@
 // Source: Phillip Opperman, https://os.phil-opp.com/testing/
 
-use crate::{ansi, exit_failure, exit_success, print, println};
+use crate::{ansi, print, println};
 use core::panic::PanicInfo;
-
 pub trait TestCase {
     fn run(&self);
 }

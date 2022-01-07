@@ -4,10 +4,9 @@ set -e
 
 cd "$(git rev-parse --show-toplevel)"
 
-rust_files="$(git diff --name-only --staged | grep -e '.rs$' || echo -n)"
+git stash -q --keep-index
 
-for file in $rust_files; do
-    if [[ -f $file ]]; then
-        rustfmt --check $file
-    fi
-done
+make fmt
+git add -u
+
+git stash pop -q

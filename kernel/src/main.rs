@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message, exclusive_range_pattern, custom_test_frameworks)]
+#![allow(arithmetic_overflow)]
 #![allow(dead_code)]
 #![test_runner(test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
@@ -9,13 +10,13 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 mod ansi;
+mod bitwise;
 mod boot;
 mod debug;
 mod driver;
 mod mem;
 mod panic;
 mod trap;
-mod util;
 
 #[cfg(not(test))]
 lazy_static! {
@@ -23,6 +24,24 @@ lazy_static! {
         Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART));
     pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
 }
+
+#[macro_export]
+macro_rules! exit_failure {
+    () => {
+        use qemu_exit::QEMUExit;
+        crate::QEMU_EXIT.exit_failure();
+    };
+}
+
+#[macro_export]
+macro_rules! exit_success {
+    () => {
+        use qemu_exit::QEMUExit;
+        crate::QEMU_EXIT.exit_success();
+    };
+}
+
+#[cfg(not(test))]
 
 /// Entry-point for the kernel. After the assembly-based set-up
 /// is complete, the system will jump here.
@@ -34,29 +53,8 @@ pub extern "C" fn kernel_start() -> ! {
         ansi::Color::Cyan,
         ansi::Color::Reset
     );
-    for _ in 0..48 {
-        print!("=");
-    }
-    println!();
 
-    println!(
-        "Text:  {:p}..{:p} ({:6} KB)",
-        text_begin!(),
-        text_end!(),
-        text_size!() / 1024
-    );
-    println!(
-        "Stack: {:p}..{:p} ({:6} KB)",
-        k_stack_begin!(),
-        k_stack_end!(),
-        k_stack_size!() / 1024
-    );
-    println!(
-        "Heap:  {:p}..{:p} ({:6} KB)",
-        k_heap_begin!(),
-        k_heap_end!(),
-        k_heap_size!() / 1024
-    );
+    sv39_enable!();
 
     panic!("end of kernel_start");
 }
