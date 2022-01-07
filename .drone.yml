@@ -1,0 +1,24 @@
+kind: pipeline
+name: default
+
+steps:
+
+- name: fmt-check
+  image: rust
+  commands:
+    - env NONINTERACTIVE=1 make init
+    - make fmt-check
+
+- name: build
+  image: rust
+  commands:
+    - apt update && apt install -y qemu-system-riscv64
+    - env NONINTERACTIVE=1 make init
+    - make release
+
+- name: test
+  image: rust
+  commands:
+    - apt update && apt install -y qemu-system-riscv64
+    - env NONINTERACTIVE=1 make init
+    - make test

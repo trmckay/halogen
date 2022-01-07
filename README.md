@@ -1,5 +1,7 @@
 # Halogen
 
+[![Build Status](https://drone.trmckay.com/api/badges/tm/halogen/status.svg)](https://drone.trmckay.com/tm/halogen)
+
 A simple OS kernel for RISC-V made with Rust.
 
 ## Dev requirements

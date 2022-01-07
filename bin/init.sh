@@ -16,6 +16,26 @@ if [[ $NONINTERACTIVE -ne 1 ]] && ! grep -q "add-auto-load-safe-path $(pwd)/.gdb
     fi
 fi
 
+if [[ $NONINTERACTIVE -ne 1 ]]; then
+    echo
+    read -p "Install drone-cli to ~/.local/bin to run CI locally? [y/N]" ans
+
+    if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+        url="https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz"
+
+        pwd=$(pwd)
+        tmp=$(mktemp -d)
+        cd $tmp
+
+        wget -q $url
+        tar xvf $(basename $url) > /dev/null
+        mv -v drone ~/.local/bin
+
+        cd $pwd
+        rm -r $tmp
+    fi
+fi
+
 if ! command -v rustup > /dev/null; then
     echo "Error: cannot find rustup."
     exit 1
