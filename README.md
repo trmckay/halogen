@@ -16,7 +16,7 @@ A simple OS kernel for RISC-V made with Rust.
 
 - [QEMU](https://gitlab.com/qemu-project/qemu) >= 5 with `qemu-system-riscv64`
 
-- Run `make init` in this repository to configure the Rust toolchain
+- Run `make init` to configure the repository.
 
 ## Usage
 
