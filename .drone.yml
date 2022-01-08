@@ -1,5 +1,6 @@
 kind: pipeline
-name: default
+name: format
+type: docker
 
 steps:
 
@@ -9,6 +10,12 @@ steps:
     - env NONINTERACTIVE=1 make init
     - make fmt-check
 
+---
+kind: pipeline
+name: build
+type: docker
+
+steps:
 - name: build
   image: rust
   commands:
@@ -16,6 +23,12 @@ steps:
     - env NONINTERACTIVE=1 make init
     - make release
 
+---
+kind: pipeline
+name: test
+type: docker
+
+steps:
 - name: test
   image: rust
   commands:
