@@ -51,3 +51,7 @@ fmt:
 .PHONY: fmt-check
 fmt-check:
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) fmt --check
+
+.PHONY: doc
+doc:
+	cd $(CARGO_PROJ) && cargo doc

@@ -1,8 +1,8 @@
 use crate::{print, println};
 use core::ptr::read;
 
-/// Prints a human-readable dump of memory from
-/// `base` to `base + size`.
+/// Print a human-readable dump of memory from `base` to `base + size`. Uses the `println!` macro
+/// to output to UART
 pub fn print_dump(base: *const u8, size: usize) {
     unsafe {
         let mut buf: [u8; 16] = [0; 16];

@@ -30,3 +30,27 @@ steps:
   image: trmckay/rust-riscv64
   commands:
     - make test
+
+---
+kind: pipeline
+name: doc
+type: docker
+
+steps:
+- name: build
+  image: trmckay/rust-riscv64
+  commands:
+    - make doc
+
+- name: deploy
+  image: drillster/drone-rsync
+  settings:
+    hosts: [ "ln-fre-1.trmckay.com" ]
+    port: 224
+    delete: true
+    target: /static/halogen/rustdoc
+    source: ./kernel/target/riscv64gc-unknown-none-elf/doc/*
+    key:
+      from_secret: rsync-static-key
+  when:
+    branch: main

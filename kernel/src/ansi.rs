@@ -1,5 +1,6 @@
 use core::fmt;
 
+/// ANSI color-codes
 #[derive(Copy, Clone)]
 pub enum Color {
     Black = 30,
@@ -13,6 +14,7 @@ pub enum Color {
     Reset = 0,
 }
 
+/// Set the color by printing an ANSI color-code escape-sequence
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\x1B[{}m", *self as u32)?;

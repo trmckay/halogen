@@ -1,4 +1,4 @@
-/// Write to a physical address.
+/// Write to a physical address
 #[macro_export]
 macro_rules! phys_write {
     ($a:expr, $d:expr) => {
@@ -13,7 +13,7 @@ macro_rules! phys_write {
     };
 }
 
-/// Read from a physical address.
+/// Read from a physical address
 #[macro_export]
 macro_rules! phys_read {
     ($a:expr) => {

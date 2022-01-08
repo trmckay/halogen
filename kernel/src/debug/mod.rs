@@ -1,5 +1,4 @@
-/// Allows for printing memory dumps at arbitrary
-/// physical addresses.
+/// Tools for dumping kernel memory
 mod dump;
 
 pub use dump::print_dump;

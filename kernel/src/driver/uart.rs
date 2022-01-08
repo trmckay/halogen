@@ -5,20 +5,13 @@ use crate::{phys_read, phys_write};
 #[cfg(platform = "virt")]
 pub const DEV_UART: usize = 0x1000_0000;
 
-/// Simple handle for the UART device.
-/// This is implemented as a struct so
-/// we can use the Write trait.
-///
-/// We also have the advantage of enforcing
-/// a mutable access on writes.
+/// Simple handle for the UART device
 pub struct UartWriter {
     phys_addr: usize,
 }
 
 impl UartWriter {
     /// Read a single byte from the device.
-    ///
-    /// Example:
     ///
     /// ```
     /// pub const DEV_UART0: usize = 0x1000;
@@ -33,9 +26,7 @@ impl UartWriter {
         UartWriter { phys_addr }
     }
 
-    /// Read a single byte from the device.
-    ///
-    /// Example:
+    /// Read a single byte from the device
     ///
     /// ```
     /// let c: u8 = uart.read_byte();
@@ -45,9 +36,7 @@ impl UartWriter {
         return phys_read!(self.phys_addr);
     }
 
-    /// Write a single byte to the device.
-    ///
-    /// Example:
+    /// Write a single byte to the device
     ///
     /// ```
     /// let c: u8 = 0x17;
@@ -59,8 +48,7 @@ impl UartWriter {
     }
 }
 
-// Implement the `Write` trait so we can
-// print format strings.
+// Implement the `Write` trait so we can print format strings
 impl Write for UartWriter {
     fn write_str(&mut self, s: &str) -> Result<(), Error> {
         for b in s.bytes() {
@@ -77,11 +65,13 @@ pub fn _print(args: Arguments) {
     crate::UART.lock().write_fmt(args).unwrap();
 }
 
+/// Print a string over UART
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::driver::uart::_print(format_args!($($arg)*)));
 }
 
+/// Print a string and newline over UART
 #[macro_export]
 macro_rules! println {
     () => ($crate::print!("\n"));

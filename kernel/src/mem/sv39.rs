@@ -1,5 +1,7 @@
+/// Count of page-table entries per page-table
 pub const PTE_PER_PT: usize = 512;
 
+/// Enable paging in Sv39 mode
 #[macro_export]
 macro_rules! sv39_enable {
     () => {{
@@ -10,6 +12,7 @@ macro_rules! sv39_enable {
     }};
 }
 
+/// Set the paging mode to bare
 #[macro_export]
 macro_rules! sv39_disable {
     () => {{
@@ -20,6 +23,7 @@ macro_rules! sv39_disable {
     }};
 }
 
+/// Packed structure representing a single page-table
 #[repr(C, packed)]
 struct PageTable {
     entries: [u64; 512],

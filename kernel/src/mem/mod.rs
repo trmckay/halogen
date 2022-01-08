@@ -1,9 +1,10 @@
+/// Tools for interacting with physical memory
 pub mod phys;
+
+/// Implementation of the RISC-V Sv39 memory-paging system
 pub mod sv39;
 
-pub const NULL_PTR: *const u8 = 0 as *const u8;
-pub const NULL_PTR_MUT: *mut u8 = 0 as *mut u8;
-
+/// Global symbols imported from the linker
 extern "C" {
     pub static TEXT_BEGIN: usize;
     pub static K_STACK_BEGIN: usize;
@@ -13,6 +14,7 @@ extern "C" {
     pub static MEM_END: usize;
 }
 
+/// Macro to get the beginning address of the text section
 #[macro_export]
 macro_rules! text_begin {
     () => {{
@@ -21,6 +23,7 @@ macro_rules! text_begin {
     }};
 }
 
+/// Macro to get the end address of the text section
 #[macro_export]
 macro_rules! text_end {
     () => {{
@@ -29,6 +32,7 @@ macro_rules! text_end {
     }};
 }
 
+/// Macro to get the size of the text section
 #[macro_export]
 macro_rules! text_size {
     () => {{
@@ -37,6 +41,7 @@ macro_rules! text_size {
     }};
 }
 
+/// Macro to get the beginning address of the kernel stack
 #[macro_export]
 macro_rules! k_stack_begin {
     () => {{
@@ -45,6 +50,7 @@ macro_rules! k_stack_begin {
     }};
 }
 
+/// Macro to get the end address of the kernel stack
 #[macro_export]
 macro_rules! k_stack_end {
     () => {{
@@ -53,6 +59,7 @@ macro_rules! k_stack_end {
     }};
 }
 
+/// Macro to get the size of the kernel stack
 #[macro_export]
 macro_rules! k_stack_size {
     () => {{
@@ -61,6 +68,7 @@ macro_rules! k_stack_size {
     }};
 }
 
+/// Macro to get the beginning address of the kernel heap
 #[macro_export]
 macro_rules! k_heap_begin {
     () => {{
@@ -71,6 +79,7 @@ macro_rules! k_heap_begin {
     }};
 }
 
+/// Macro to get the end address of the kernel heap
 #[macro_export]
 macro_rules! k_heap_end {
     () => {{
@@ -81,6 +90,7 @@ macro_rules! k_heap_end {
     }};
 }
 
+/// Macro to get the end size the kernel heap
 #[macro_export]
 macro_rules! k_heap_size {
     () => {{
