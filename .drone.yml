@@ -1,13 +1,12 @@
+---
 kind: pipeline
 name: format
 type: docker
 
 steps:
-
-- name: fmt-check
-  image: rust
+- name: format
+  image: trmckay/rust-riscv64
   commands:
-    - env NONINTERACTIVE=1 make init
     - make fmt-check
 
 ---
@@ -17,10 +16,8 @@ type: docker
 
 steps:
 - name: build
-  image: rust
+  image: trmckay/rust-riscv64
   commands:
-    - apt update && apt install -y qemu-system-riscv64
-    - env NONINTERACTIVE=1 make init
     - make release
 
 ---
@@ -30,8 +27,6 @@ type: docker
 
 steps:
 - name: test
-  image: rust
+  image: trmckay/rust-riscv64
   commands:
-    - apt update && apt install -y qemu-system-riscv64
-    - env NONINTERACTIVE=1 make init
     - make test
