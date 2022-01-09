@@ -48,9 +48,7 @@ steps:
     hosts: [ "ln-fre-1.trmckay.com" ]
     port: 224
     delete: true
-    target: /static/halogen/rustdoc
+    target: /static/halogen/$DRONE_BRANCH
     source: ./kernel/target/riscv64gc-unknown-none-elf/doc/*
     key:
       from_secret: rsync-static-key
-  when:
-    branch: main
