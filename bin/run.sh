@@ -55,4 +55,8 @@ else
         -kernel $@
 fi
 
+status=$?
+
 rm -f $tmp
+
+exit $status
