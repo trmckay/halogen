@@ -3,7 +3,7 @@ SHELL       = /bin/bash
 RUST_FILES  = $(shell find . -type f -name '*.rs')
 CARGO_PROJ  = kernel
 CARGO_TOML  = $(CARGO_PROJ)/Cargo.toml
-CARGO_FLAGS = --verbose
+CARGO_FLAGS = --verbose --color=always
 
 .PHONY: all
 all: build
@@ -54,4 +54,4 @@ fmt-check:
 
 .PHONY: doc
 doc:
-	cd $(CARGO_PROJ) && cargo doc
+	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) doc
