@@ -23,7 +23,7 @@ Alternatively, open the repository with VS Code and use the provided `launch.jso
 
 ## External resources
 
-- Crate documentation at `https://static.trmckay.com/halogen/<branch>/halogen`
+- [Documentation](https://static.trmckay.com/halogen/rustdoc/halogen)
 - [rustup](https://rustup.rs)
 - [riscv-gnu-toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain)
 - [docker-rust-riscv64](https://git.trmckay.com/tm/docker-rust-riscv64)
