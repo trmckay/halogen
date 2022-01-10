@@ -1,13 +1,21 @@
 ---
 kind: pipeline
-name: format
+name: style
 type: docker
 
 steps:
-- name: format
+- name: style
   image: trmckay/rust-riscv64
   commands:
-    - make fmt-check
+    - apt install -y python3-pip
+    - pip3 install pre-commit
+    - pre-commit install
+    - pre-commit run trailing-whitespace -a
+    - pre-commit run end-of-file-fixer -a
+    - pre-commit run check-yaml -a
+    - pre-commit run check-added-large-files -a
+    - pre-commit run check-toml -a
+    - pre-commit run check-case-conflict -a
 
 ---
 kind: pipeline
@@ -52,3 +60,8 @@ steps:
     source: ./kernel/target/riscv64gc-unknown-none-elf/doc/*
     key:
       from_secret: rsync-static-key
+  when:
+    event:
+      - promote
+    repo:
+      - tm/halogen

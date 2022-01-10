@@ -1,0 +1,19 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+        args: ['--allow-multiple-documents']
+    -   id: check-added-large-files
+    -   id: check-toml
+    -   id: no-commit-to-branch
+        args: ['--branch', 'main']
+    -   id: check-case-conflict
+
+-   repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+    -   id: fmt
+        args: ['--manifest-path', './kernel/Cargo.toml', '--']
