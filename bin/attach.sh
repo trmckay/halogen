@@ -1,20 +1,20 @@
 #!/bin/bash
 
-tmp="$(git rev-parse --show-toplevel)/.halogen-kernel.tmp"
-gdb="riscv64-unknown-elf-gdb"
+elf="$1"
 
-if ! command -v $gdb > /dev/null; then
-    echo "$gdb not found"
+if [[ $elf == "" ]]; then
+    "Usage: $0 /path/to/elf"
     exit 1
 fi
 
-if ! test -f $tmp; then
-    echo "No kernel linked, is the GDB server running?"
-    exit 1
+if [[ ! -f $elf ]]; then
+    make $elf
 fi
 
-echo "target remote localhost:1234" >> .gdbinit
+if [[ ! -d "$RISCV_PREFIX" ]]; then
+    RISCV_PREFIX="riscv64-unknown-elf-"
+fi
 
-$gdb -q $tmp
+set -x
 
-rm -f .gdbinit
+${RISCV_PREFIX}gdb -q $elf

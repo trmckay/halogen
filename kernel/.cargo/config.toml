@@ -2,5 +2,5 @@
 target = "riscv64gc-unknown-none-elf"
 
 [target.riscv64gc-unknown-none-elf]
-rustflags = ["--cfg", 'platform="virt"', "-g", "--emit=obj,link", "-Clink-arg=-Tlink.ld"]
+rustflags = ["-g", "--emit=obj,link", "-Clink-arg=-Tvirt.lds"]
 runner = "../bin/run.sh"

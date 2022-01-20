@@ -1,90 +1,79 @@
 #![no_std]
 #![no_main]
-#![feature(panic_info_message, exclusive_range_pattern, custom_test_frameworks)]
+#![feature(
+    panic_info_message,
+    exclusive_range_pattern,
+    custom_test_frameworks,
+    naked_functions,
+    fn_align
+)]
 #![allow(arithmetic_overflow)]
 #![allow(dead_code)]
-#![test_runner(test::test_runner)]
-#![reexport_test_harness_main = "test_main"]
+#![test_runner(crate::kmain_test::run_tests)]
+#![reexport_test_harness_main = "test_harness"]
 
-use lazy_static::lazy_static;
-use spin::Mutex;
+#[cfg(not(target_arch = "riscv64"))]
+core::compile_error!("Halogen only supports riscv64");
 
-/// ANSI escape codes
-mod ansi;
+#[cfg(not(test))]
+pub use crate::kmain::kmain;
+#[cfg(test)]
+pub use crate::kmain_test::kmain;
+
 /// Bitwise manipulation utilities
 mod bitwise;
-/// Code run at boot
+/// Entrypoint for OpenSBI
 mod boot;
-/// Debug utilities
-mod debug;
-/// Device drivers
-mod driver;
-/// Memory and MMU
+/// Memory management
 mod mem;
 /// Panic language-feature
 mod panic;
-/// Trap vectors
-mod trap;
+/// Interfacing with OpenSBI
+mod sbi;
+
+const MOTD: &str = r"
+ _   _       _
+| | | | __ _| | ___   __ _  ___ _ __
+| |_| |/ _` | |/ _ \ / _` |/ _ | '_ \
+|  _  | (_| | | (_) | (_| |  __| | | |
+|_| |_|\__,_|_|\___/ \__, |\___|_| |_|
+                     |___/
+";
 
 #[cfg(not(test))]
-lazy_static! {
-    /// Singleton `UART` structure for printing to the console.
-    pub static ref UART: Mutex<driver::uart::UartWriter> =
-        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART));
+mod kmain {
+    use super::*;
 
-    /// Singleton `QEMU_EXIT` to allow interacting with the host QEMU process.
-    pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
-}
-
-/// Exit the QEMU virtual machine and return exit code 1 to the calling shell.
-#[macro_export]
-macro_rules! exit_failure {
-    () => {
-        use qemu_exit::QEMUExit;
-        crate::QEMU_EXIT.exit_failure();
-    };
-}
-
-/// Exit the QEMU virtual machine and return exit code 0 to the calling shell.
-#[macro_export]
-macro_rules! exit_success {
-    () => {
-        use qemu_exit::QEMUExit;
-        crate::QEMU_EXIT.exit_success();
-    };
-}
-
-#[cfg(not(test))]
-
-/// Entry-point for the kernel. After the assembly-based set-up
-/// is complete, the system will jump here
-#[cfg(not(test))]
-#[no_mangle]
-pub extern "C" fn kernel_start() -> ! {
-    println!(
-        "\n{}halogen kernel v0{}",
-        ansi::Color::Cyan,
-        ansi::Color::Reset
-    );
-
-    sv39_enable!();
-
-    panic!("end of kernel_start");
+    /// Entry-point for the kernel. After the assembly-based set-up
+    /// is complete, the system will jump here
+    #[no_mangle]
+    #[allow(named_asm_labels)]
+    pub extern "C" fn kmain() -> ! {
+        println!("{}", MOTD);
+        unimplemented!();
+    }
 }
 
 #[cfg(test)]
-mod test;
+mod kmain_test {
+    use super::*;
 
-#[cfg(test)]
-lazy_static! {
-    pub static ref UART: Mutex<driver::uart::UartWriter> =
-        Mutex::new(driver::uart::UartWriter::new(driver::uart::DEV_UART));
-    pub static ref QEMU_EXIT: qemu_exit::RISCV64 = qemu_exit::RISCV64::new(driver::DEV_TEST as u64);
-}
+    #[no_mangle]
+    #[allow(named_asm_labels)]
+    pub extern "C" fn kmain() -> ! {
+        crate::test_harness();
+        loop {}
+    }
 
-#[cfg(test)]
-#[no_mangle]
-pub extern "C" fn kernel_start() -> ! {
-    test_main();
-    exit_success!();
+    pub fn run_tests(tests: &[&dyn Fn()]) {
+        println!("Running {} tests", tests.len());
+        for test in tests {
+            test();
+        }
+    }
+
+    #[test_case]
+    fn trivial_assertion() {
+        assert_eq!(1, 1);
+    }
 }

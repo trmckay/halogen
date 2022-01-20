@@ -1,57 +1,79 @@
-SHELL       = /bin/bash
+BUILD_DIR = build
 
-RUST_FILES  = $(shell find . -type f -name '*.rs')
 CARGO_PROJ  = kernel
-CARGO_TOML  = $(CARGO_PROJ)/Cargo.toml
-CARGO_FLAGS = --verbose --color=always
+CARGO_FLAGS = --color=always
+RUST_SOURCE = $(shell find -type f -regex '.*\.rs$$')
+
+ifndef $(CROSS_COMPILE)
+CROSS_COMPILE = riscv64-unknown-elf-
+endif
+
+SBI = opensbi
+PLATFORM = generic
+
+KERNEL_BUILD = kernel/target/riscv64gc-unknown-none-elf/debug/halogen
+KERNEL_ELF = $(BUILD_DIR)/$(shell basename $(KERNEL_BUILD)).elf
+KERNEL_BIN = $(BUILD_DIR)/$(shell basename $(KERNEL_BUILD)).bin
+KERNEL_DUMP = $(BUILD_DIR)/halogen.dump
+KERNEL_TEST_ELF = $(patsubst %.elf,%-test.elf,$(KERNEL_ELF))
+KERNEL_TEST_BIN = $(patsubst %.bin,%-test.bin,$(KERNEL_BIN))
+KERNEL_TEST_DUMP = $(patsubst %.dump,%-test.dump,$(KERNEL_DUMP))
+
+FIRMWARE_BUILD = opensbi/build/platform/generic/firmware/fw_jump.bin
+FIRMWARE_ELF = opensbi/build/platform/generic/firmware/fw_jump.elf
+FIRMWARE = $(BUILD_DIR)/fw.bin
 
 .PHONY: all
-all: build
+all: $(KERNEL_BIN) $(FIRMWARE) $(KERNEL_DUMP) $(KERNEL_TEST_BIN) $(KERNEL_TEST_DUMP)
 
-.PHONY: init
-init:
-	bin/init.sh
+%.dump: %.elf
+	$(CROSS_COMPILE)objdump -S $^ > $@
 
-.PHONY: build
-build: $(RUST_FILES) $(CARGO_TOML)
+%.bin: %.elf
+	mkdir -p $(BUILD_DIR)
+	$(CROSS_COMPILE)objcopy -O binary $< $@
+
+$(KERNEL_ELF): $(RUST_SOURCE)
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) build
+	mkdir -p $(BUILD_DIR)
+	cp $(KERNEL_BUILD) $@
 
-.PHONY: release
-release: $(RUST_FILES) $(CARGO_TOML)
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) build --release
+$(KERNEL_TEST_ELF): $(RUST_SOURCE)
+	cp $$( \
+		cd $(CARGO_PROJ) && \
+		cargo test --no-run --message-format=json | \
+		jq 'select(.reason=="compiler-artifact")' | \
+		jq 'select(.executable!=null)' | \
+		jq -r '.executable' \
+	) $@
 
-.PHONY: test
-test: $(RUST_FILES) $(CARGO_TOML)
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) test
+$(SBI)/Makefile:
+	git submodule update --init --recursive --remote
 
-.PHONY: test-debug
-test-debug: $(RUST_FILES) $(CARGO_TOML)
-	cd $(CARGO_PROJ) && HALOGEN_DEBUG=1 cargo $(CARGO_FLAGS) test
+$(FIRMWARE_BUILD): $(SBI)/Makefile $(KERNEL_BIN)
+	make \
+		-j$(shell nproc) \
+		CROSS_COMPILE=$(CROSS_COMPILE) \
+		PLATFORM=$(PLATFORM) \
+		FW_PIC=no \
+		FW_KERNEL_BIN_PATH=../$(KERNEL_BIN) \
+		-C $(SBI)
 
-.PHONY: run
-run: build
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) run
+$(FIRMWARE): $(FIRMWARE_BUILD)
+	mkdir -p $(BUILD_DIR)
+	cp $(FIRMWARE_BUILD) $(FIRMWARE)
 
-.PHONY: run-debug
-run-debug: $(RUST_FILES) $(CARGO_TOML)
-	cd $(CARGO_PROJ) && HALOGEN_DEBUG=1 cargo $(CARGO_FLAGS) run
+$(KERNEL_BIN): $(KERNEL_ELF)
+$(KERNEL_TEST_BIN): $(KERNEL_TEST_ELF)
+$(KERNEL_DUMP): $(KERNEL_ELF)
+$(KERNEL_TEST_DUMP): $(KERNEL_TEST_ELF)
 
-.PHONY: attach
-attach:
-	bin/attach.sh
+.PHONY: doc
+doc:
+	cd $(CARGO_PROJ) && cargo doc
 
 .PHONY: clean
 clean:
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) clean
-
-.PHONY: fmt
-fmt:
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) fmt
-
-.PHONY: fmt-check
-fmt-check:
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) fmt --check
-
-.PHONY: doc
-doc:
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) doc
+	rm -rf $(SBI)/build
+	rm -rf $(BUILD_DIR)

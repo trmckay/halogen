@@ -1,47 +1,41 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "shell",
-			"command": "make",
-			"problemMatcher": [],
-			"label": "make",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		},
-		{
-			"type": "shell",
-			"command": "make run-debug",
-			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": ""
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": " ",
-					"endsPattern": "Finished"
-				}
-			},
-			"label": "GDB server - run"
-		},
-		{
-			"type": "shell",
-			"command": "make test-debug",
-			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": ""
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": " ",
-					"endsPattern": "Finished"
-				}
-			},
-			"label": "GDB server - test"
-		}
-	]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "command": "make",
+            "problemMatcher": [],
+            "label": "make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "shell",
+            "command": "make clean",
+            "problemMatcher": [],
+            "label": "make clean",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "shell",
+            "command": "${workspaceFolder}/bin/run.sh",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": ""
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": " ",
+                    "endsPattern": "."
+                }
+            },
+            "label": "GDB server"
+        },
+    ]
 }

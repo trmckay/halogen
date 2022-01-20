@@ -30,22 +30,7 @@ steps:
 - name: build
   image: trmckay/rust-riscv64
   commands:
-  - make release
-  when:
-    ref:
-    - refs/heads/main
-    - refs/pull/*/head
-
----
-kind: pipeline
-name: test
-type: docker
-
-steps:
-- name: run tests
-  image: trmckay/rust-riscv64
-  commands:
-  - make test
+  - make all
   when:
     ref:
     - refs/heads/main

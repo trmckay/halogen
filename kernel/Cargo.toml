@@ -5,16 +5,12 @@ authors = ["Trevor McKay <tm@trmckay.com>"]
 edition = "2018"
 
 [dependencies]
-spin = "0.9.*"
-riscv = "0.7.*"
 qemu-exit = "3.0.*"
-
-[dependencies.lazy_static]
-version = "1.4.*"
-features = ["spin_no_std"]
 
 [profile.dev]
 panic = "abort"
+opt-level = 0
 
 [profile.release]
 panic = "abort"
+opt-level = 2
