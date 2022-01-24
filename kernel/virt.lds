@@ -4,16 +4,16 @@ ENTRY(_init)
 
 SECTIONS
 {
-    . = 0x80200000;
+    . = 0xC0000000;
 
-    PROVIDE(__text_begin = .);
+    PROVIDE(_KERNEL_START_VIRT = .);
 
     .text : AT(ADDR(.text)) {
-        PROVIDE(KERNEL_ENTRY = .);
         *(.text.init)
         *(.text .text.*)
-        . = ALIGN(4K);
     }
+
+    . = ALIGN(4K);
 
     PROVIDE(__text_end = .);
     PROVIDE(__data_start = .);
@@ -45,24 +45,20 @@ SECTIONS
     PROVIDE(__bss_end = .);
 
     .tdata : AT(ADDR(.tdata)) {
-        . = ALIGN(4K);
         PROVIDE(__tdata_start = .);
-
         *(.tdata .tdata.*)
-
-        . = ALIGN(4K);
         PROVIDE(__tdata_end = .);
     }
 
+    . = ALIGN(4K);
+
+    PROVIDE(_KERNEL_SIZE = . - _KERNEL_START_VIRT);
+
     .init_stack : AT(ADDR(.init_stack)) {
         PROVIDE(__init_stack_bottom = .);
-        . = ALIGN(4K);
-        . += 1024 * 1024 * 4;
-        . = ALIGN(4K);
+        . += 1024 * 1024 * 2;
         PROVIDE(__init_stack_top = .);
     }
-
-    PROVIDE(_KERNEL_END = .);
 
     /DISCARD/ : { *(.eh_frame_hdr .eh_frame) }
 }

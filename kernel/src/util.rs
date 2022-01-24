@@ -17,3 +17,10 @@ macro_rules! mask_range {
         (((0b1 as $t) << ($msb - $lsb + 1)) - 1) << $lsb
     };
 }
+
+#[macro_export]
+macro_rules! align {
+    ($n:expr, $d:expr) => {
+        ($n + ($d - 1)) & !($d - 1)
+    };
+}

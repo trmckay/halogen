@@ -3,7 +3,7 @@
     "tasks": [
         {
             "type": "shell",
-            "command": "make",
+            "command": "make clean && make",
             "problemMatcher": [],
             "label": "make",
             "group": {
@@ -24,6 +24,11 @@
         {
             "type": "shell",
             "command": "${workspaceFolder}/bin/run.sh",
+            "args": [
+                "-g",
+                "build/halogen.bin"
+            ],
+            "dependsOn": "make",
             "isBackground": true,
             "problemMatcher": {
                 "pattern": {

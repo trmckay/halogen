@@ -36,6 +36,16 @@ steps:
     - refs/heads/main
     - refs/pull/*/head
 
+- name: test
+  image: trmckay/rust-riscv64
+  commands:
+  - make all
+  - bin/run.sh build/halogen-test.bin
+  when:
+    ref:
+    - refs/heads/main
+    - refs/pull/*/head
+
 ---
 kind: pipeline
 name: doc

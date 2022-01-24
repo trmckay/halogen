@@ -5,7 +5,8 @@
     exclusive_range_pattern,
     custom_test_frameworks,
     naked_functions,
-    fn_align
+    fn_align,
+    asm_sym
 )]
 #![allow(arithmetic_overflow)]
 #![allow(dead_code)]
@@ -20,8 +21,6 @@ pub use crate::kmain::kmain;
 #[cfg(test)]
 pub use crate::kmain_test::kmain;
 
-/// Bitwise manipulation utilities
-mod bitwise;
 /// Entrypoint for OpenSBI
 mod boot;
 /// Memory management
@@ -30,6 +29,10 @@ mod mem;
 mod panic;
 /// Interfacing with OpenSBI
 mod sbi;
+/// Bitwise manipulation utilities
+mod util;
+
+mod arch;
 
 const MOTD: &str = r"
  _   _       _
@@ -48,6 +51,8 @@ mod kmain {
     /// is complete, the system will jump here
     #[no_mangle]
     #[allow(named_asm_labels)]
+    // stvec must be 4-byte aligned
+    #[repr(align(4))]
     pub extern "C" fn kmain() -> ! {
         println!("{}", MOTD);
         unimplemented!();
@@ -60,20 +65,17 @@ mod kmain_test {
 
     #[no_mangle]
     #[allow(named_asm_labels)]
+    #[repr(align(4))]
     pub extern "C" fn kmain() -> ! {
         crate::test_harness();
-        loop {}
+        exit!(0);
     }
 
     pub fn run_tests(tests: &[&dyn Fn()]) {
-        println!("Running {} tests", tests.len());
+        println!("{}", MOTD);
+        println!("\nRunning {} tests", tests.len());
         for test in tests {
             test();
         }
-    }
-
-    #[test_case]
-    fn trivial_assertion() {
-        assert_eq!(1, 1);
     }
 }

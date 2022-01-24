@@ -3,6 +3,7 @@ BUILD_DIR = build
 CARGO_PROJ  = kernel
 CARGO_FLAGS = --color=always
 RUST_SOURCE = $(shell find -type f -regex '.*\.rs$$')
+LDS = kernel/virt.lds
 
 ifndef $(CROSS_COMPILE)
 CROSS_COMPILE = riscv64-unknown-elf-
@@ -75,5 +76,4 @@ doc:
 .PHONY: clean
 clean:
 	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) clean
-	rm -rf $(SBI)/build
 	rm -rf $(BUILD_DIR)
