@@ -1,9 +1,3 @@
-use crate::mem::{KERNEL_SIZE, KERNEL_START_PHYS, KERNEL_START_VIRT, L0_PAGE_SIZE, PAGING_EN};
-
-pub const PAGE_ALLOC_BLOCK_SIZE: usize = L0_PAGE_SIZE;
-pub const PAGE_ALLOC_NUM_BLOCKS: usize = (256) * 8; // = 8M
-pub const PAGE_ALLOC_SIZE: usize = PAGE_ALLOC_BLOCK_SIZE * PAGE_ALLOC_NUM_BLOCKS;
-
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
 enum BlockStatus {
@@ -13,16 +7,20 @@ enum BlockStatus {
 }
 
 /// A physical page bitmap allocator
+///
+/// Generics:
+/// * `N`: number of blocks
+/// * `S`: size of each block
 #[repr(C, packed)]
-pub struct BitmapPageAllocator {
-    map: [BlockStatus; PAGE_ALLOC_NUM_BLOCKS],
-    arena: usize,
+pub struct Bitmap<const N: usize, const S: usize> {
+    map: [BlockStatus; N],
+    arena: *mut u8,
 }
 
-impl BitmapPageAllocator {
-    pub fn new(arena: usize) -> BitmapPageAllocator {
-        BitmapPageAllocator {
-            map: [BlockStatus::Free; PAGE_ALLOC_NUM_BLOCKS],
+impl<const N: usize, const S: usize> Bitmap<N, S> {
+    pub fn new(arena: *mut u8) -> Bitmap<N, S> {
+        Bitmap {
+            map: [BlockStatus::Free; N],
             arena,
         }
     }
@@ -35,14 +33,24 @@ impl BitmapPageAllocator {
     }
 
     fn to_ptr(&self, block_num: usize) -> *mut u8 {
-        (self.arena + (PAGE_ALLOC_BLOCK_SIZE * block_num)) as *mut u8
+        unsafe { (self.arena.add(S * block_num)) as *mut u8 }
+    }
+
+    pub fn boundary(&self) -> *const u8 {
+        let mut last = 0;
+        for i in 0..N {
+            if let BlockStatus::Used | BlockStatus::Boundary = self.map[i] {
+                last = i;
+            }
+        }
+        unsafe { self.arena.add(S * (last + 1)) }
     }
 
     pub fn alloc(&mut self, n: usize) -> Option<*mut u8> {
         let mut alloc_start = 0;
         let mut found = 0;
 
-        for i in 0..PAGE_ALLOC_NUM_BLOCKS {
+        for i in 0..N {
             match self.map[i] {
                 BlockStatus::Free => {
                     if found == 0 {
@@ -64,7 +72,7 @@ impl BitmapPageAllocator {
     }
 
     pub fn free(&mut self, ptr: *const u8) {
-        let mut pos = ((ptr as usize) - self.arena) / PAGE_ALLOC_BLOCK_SIZE;
+        let mut pos = ((ptr as usize) - (self.arena as usize)) / N;
         loop {
             match self.map[pos] {
                 BlockStatus::Used => {
@@ -79,27 +87,4 @@ impl BitmapPageAllocator {
             };
         }
     }
-}
-
-/// Get the kernel heap bitmap from its reserved spot
-pub fn get_bitmap() -> &'static mut BitmapPageAllocator {
-    unsafe {
-        let ptr = (match PAGING_EN {
-            0 => KERNEL_START_PHYS,
-            _ => KERNEL_START_VIRT,
-        } + KERNEL_SIZE) as *mut BitmapPageAllocator;
-        ptr.as_mut().expect("Kernel heap is null")
-    }
-}
-
-/// Alllocate physical pages from the kernel heap
-pub fn palloc(pages: usize) -> Option<*mut u8> {
-    let map = get_bitmap();
-    map.alloc(pages)
-}
-
-/// Free an allocations pages
-pub fn pfree(ptr: *mut u8) {
-    let map = get_bitmap();
-    map.free(ptr);
 }

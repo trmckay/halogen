@@ -11,10 +11,14 @@ if [[ ! -d "$RISCV_PREFIX" ]]; then
     RISCV_PREFIX="riscv64-unknown-elf-"
 fi
 
-
 set -x
 
-${RISCV_PREFIX}gdb \
+${RISCV_PREFIX}gdb -q \
+    -ex "set confirm off" \
+    -ex "set architecture riscv:rv64" \
+    -ex "symbol-file $elf" \
+    -ex "set disassemble-next-line auto" \
+    -ex "set riscv use-compressed-breakpoints yes" \
     -ex "target remote:1234" \
     -ex "break kmain" \
-    -q $elf
+    -ex "continue"

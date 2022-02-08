@@ -24,3 +24,26 @@ macro_rules! align {
         ($n + ($d - 1)) & !($d - 1)
     };
 }
+
+#[macro_export]
+#[allow(clippy::nonminimal_bool)]
+macro_rules! is_aligned {
+    ($addr:expr, $d:expr) => {{
+        (0 == $addr % $d)
+    }};
+}
+
+#[macro_export]
+macro_rules! log2 {
+    ($n:expr) => {{
+        let mut b = 0;
+        let mut n = $n >> 1;
+
+        while (n > 0) {
+            n >>= 1;
+            b += 1;
+        }
+
+        b
+    }};
+}

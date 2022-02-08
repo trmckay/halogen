@@ -4,7 +4,7 @@ ENTRY(_init)
 
 SECTIONS
 {
-    . = 0xC0000000;
+    . = 0x80200000;
 
     PROVIDE(_KERNEL_START_VIRT = .);
 
@@ -15,8 +15,7 @@ SECTIONS
 
     . = ALIGN(4K);
 
-    PROVIDE(__text_end = .);
-    PROVIDE(__data_start = .);
+    PROVIDE(_TEXT_END = .);
 
     .data : AT(ADDR(.data)) {
         *(.data .data.* .rodata .rodata.*)
@@ -29,7 +28,6 @@ SECTIONS
 
     . = ALIGN(4K);
 
-    PROVIDE(__data_end = .);
     PROVIDE(__bss_start = .);
 
     .sbss : AT(ADDR(.sbss)) {
@@ -52,13 +50,18 @@ SECTIONS
 
     . = ALIGN(4K);
 
+    PROVIDE(_DATA_END = .);
     PROVIDE(_KERNEL_SIZE = . - _KERNEL_START_VIRT);
+
+    . += 4096 * 512;
 
     .init_stack : AT(ADDR(.init_stack)) {
         PROVIDE(__init_stack_bottom = .);
-        . += 1024 * 1024 * 2;
+        . += 1024 * 256;
         PROVIDE(__init_stack_top = .);
     }
+
+    PROVIDE(_INIT_STACK_TOP = .);
 
     /DISCARD/ : { *(.eh_frame_hdr .eh_frame) }
 }

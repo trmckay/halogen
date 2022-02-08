@@ -6,33 +6,36 @@
     custom_test_frameworks,
     naked_functions,
     fn_align,
-    asm_sym
+    asm_sym,
+    alloc_error_handler
 )]
 #![allow(arithmetic_overflow)]
 #![allow(dead_code)]
-#![test_runner(crate::kmain_test::run_tests)]
+#![test_runner(crate::tests::run_tests)]
 #![reexport_test_harness_main = "test_harness"]
 
 #[cfg(not(target_arch = "riscv64"))]
 core::compile_error!("Halogen only supports riscv64");
 
-#[cfg(not(test))]
-pub use crate::kmain::kmain;
-#[cfg(test)]
-pub use crate::kmain_test::kmain;
-
+/// Architecture specifics
+pub mod arch;
 /// Entrypoint for OpenSBI
 mod boot;
+/// Logging utilities
+pub mod log;
 /// Memory management
-mod mem;
+pub mod mem;
 /// Panic language-feature
 mod panic;
 /// Interfacing with OpenSBI
-mod sbi;
+pub mod sbi;
+/// Unit and integration tests
+#[cfg(test)]
+mod tests;
+/// Trap handlers
+mod trap;
 /// Bitwise manipulation utilities
-mod util;
-
-mod arch;
+pub mod util;
 
 const MOTD: &str = r"
  _   _       _
@@ -43,39 +46,46 @@ const MOTD: &str = r"
                      |___/
 ";
 
-#[cfg(not(test))]
-mod kmain {
-    use super::*;
+use core::arch::asm;
 
-    /// Entry-point for the kernel. After the assembly-based set-up
-    /// is complete, the system will jump here
-    #[no_mangle]
-    #[allow(named_asm_labels)]
-    // stvec must be 4-byte aligned
-    #[repr(align(4))]
-    pub extern "C" fn kmain() -> ! {
-        println!("{}", MOTD);
-        unimplemented!();
-    }
-}
+/// Entry-point for the kernel. The arguments are the beginning virtual
+/// address and size of the memory available to the kernel.
+///
+/// # Safety
+///
+/// `free_start` should point to a mapped, writeable, page-aligned, and free
+/// address. `free_size` should be page-aligned.
+#[allow(named_asm_labels)]
+#[repr(align(4))]
+pub unsafe extern "C" fn kmain(free_start: usize, free_size: usize, page_offset: usize) -> ! {
+    asm!("csrw stvec, {}", in(reg) trap::trap_handler);
 
-#[cfg(test)]
-mod kmain_test {
-    use super::*;
+    log::LOGGER.register();
 
-    #[no_mangle]
-    #[allow(named_asm_labels)]
-    #[repr(align(4))]
-    pub extern "C" fn kmain() -> ! {
-        crate::test_harness();
-        exit!(0);
-    }
+    println!("{}", MOTD);
 
-    pub fn run_tests(tests: &[&dyn Fn()]) {
-        println!("{}", MOTD);
-        println!("\nRunning {} tests", tests.len());
-        for test in tests {
-            test();
-        }
-    }
+    mem::frame_alloc_init(free_start, free_size);
+    log::info!(
+        "Available memory: {}M @ {:p}",
+        free_size / (1024 * 1024),
+        free_start as *const u8
+    );
+
+    *mem::paging::PAGE_OFFSET.lock() = page_offset;
+    log::info!(
+        "Page offset: {:p}",
+        *mem::paging::PAGE_OFFSET.lock() as *const u8
+    );
+
+    let heap_addr = free_start + page_offset;
+    let stack_addr = heap_addr + mem::heap::HEAP_SIZE;
+
+    mem::kstack_init(stack_addr);
+
+    mem::heap_alloc_init(heap_addr);
+
+    #[cfg(test)]
+    crate::test_harness();
+
+    exit!(0);
 }

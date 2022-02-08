@@ -1,18 +1,31 @@
 #!/bin/bash
 
-firmware="build/fw.bin"
+usage="Usage: $0 [-g] [-t] [/path/to/kernel]"
+
+firmware="build/opensbi.bin"
 qemu="qemu-system-riscv64"
 debug_flags=""
+kernel="build/halogen.bin"
 
-if [[ $# -gt 2 ]]; then
-    echo "Usage: $0 [-g] /path/to/kernel"
+if [[ $# -gt 3 ]]; then
+    echo "$usage"
     exit 1
 fi
 
+
 while [[ $# -gt 0 ]]; do
     case $1 in
-        "-g")
-            debug_flags="-s -S"
+        -*)
+            if [[ "$1" =~ "h" ]]; then
+                echo "$usage"
+                exit 0
+            fi
+            if [[ "$1" =~ "t" ]]; then
+                kernel="build/halogen-test.bin"
+            fi
+            if [[ "$1" =~ "g" ]]; then
+                debug_flags="-s -S"
+            fi
             shift 1
             ;;
         *)
@@ -23,15 +36,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! -f $kernel ]]; then
-    "Kernel '$kernel' does not exist"
+    echo "Kernel '$kernel' does not exist"
     exit 1
 fi
 if [[ ! -f $firmware ]]; then
-    "Firmware '$firmware' does not exist"
+    echo "Firmware '$firmware' does not exist"
     exit 1
 fi
 
-echo -e "\nFirmware: $firmware"
+echo -e "Firmware: $firmware"
 echo "Kernel: $kernel"
 
 if [[ "$debug_flags" != "" ]]; then

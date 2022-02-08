@@ -30,7 +30,9 @@ steps:
 - name: build
   image: trmckay/rust-riscv64
   commands:
-  - make all
+  - make build/opensbi.bin
+  - make build/halogen.bin
+  - make build/halogen-test.bin
   when:
     ref:
     - refs/heads/main
@@ -39,8 +41,7 @@ steps:
 - name: test
   image: trmckay/rust-riscv64
   commands:
-  - make all
-  - bin/run.sh build/halogen-test.bin
+  - make test
   when:
     ref:
     - refs/heads/main

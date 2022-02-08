@@ -22,7 +22,7 @@ The simplest way to get a working toolchain is this:
 The main dependency for the kernel is the Rust toolchain manager, `rustup`. It can be
 installed from [rustup.rs](https://rustup.rs/).
 
-To build the test, `jq` is required. Cargo emits its test binaries to a non-deterministic
+To build the tests, `jq` is required. Cargo emits its test binaries to a non-deterministic
 path. Optionally, Cargo logs to JSON; this is how Make locates the test binary.
 
 # Instructions

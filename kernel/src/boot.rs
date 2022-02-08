@@ -1,20 +1,11 @@
-use core::{arch::asm, ptr::addr_of};
+use core::arch::asm;
 
-use crate::{
-    align,
-    arch::satp,
-    mem::{
-        paging::{pte_flags::*, *},
-        palloc,
-        palloc::{get_bitmap, BitmapPageAllocator, PAGE_ALLOC_SIZE},
-        stack::KERNEL_STACK_SIZE,
-        KERNEL_SIZE, KERNEL_START_PHYS, KERNEL_START_VIRT, MMIO_DEV_TEST_PHYS, MMIO_DEV_TEST_VIRT,
-    },
-    size_of,
-};
+use crate::{align, arch::satp, mem, mem::paging::pte_flags::*};
 
-/// Entry point called by OpenSBI
-/// This should appear at the beginning of the text
+pub const EARLY_ALLOC_BLOCK_SIZE: usize = mem::L0_PAGE_SIZE;
+pub const EARLY_ALLOC_NUM_BLOCKS: usize = 512; // = 1M
+pub const EARLY_ALLOC_SIZE: usize = EARLY_ALLOC_BLOCK_SIZE * EARLY_ALLOC_NUM_BLOCKS;
+
 #[naked]
 #[no_mangle]
 #[allow(named_asm_labels)]
@@ -63,8 +54,8 @@ pub unsafe extern "C" fn _init() -> ! {
         add gp, gp, a0
         .option pop
 
-        call palloc_init
-        j paging_init
+        call early_frame_alloc_init
+        call paging_init
 
         # Expose some global symbols
         .section .data
@@ -78,104 +69,147 @@ pub unsafe extern "C" fn _init() -> ! {
         .global KERNEL_START_PHYS
         KERNEL_START_PHYS: .dword 0
 
-        .global PAGING_EN
-        PAGING_EN: .dword 0
+        .global TEXT_END
+        TEXT_END: .dword _TEXT_END
+
+        .global DATA_END
+        DATA_END: .dword _DATA_END
+
+        .global INIT_STACK_TOP
+        INIT_STACK_TOP: .dword _INIT_STACK_TOP
     ",
         options(noreturn),
     );
 }
 
-/// Initialize a single reserved page for use as the kernel
-/// heap bitmap
-#[no_mangle]
-pub unsafe extern "C" fn palloc_init() {
-    let root = get_bitmap();
-
-    // Align to the nearest page, leaving space for the bitmap
-    let kheap_begin = align!(
-        KERNEL_START_PHYS + KERNEL_SIZE + size_of!(BitmapPageAllocator),
-        L0_PAGE_SIZE
-    );
-
-    // Initialize the bitmap
-    *root = BitmapPageAllocator::new(kheap_begin);
+/// Get the kernel heap bitmap from its reserved spot.
+fn early_frame_alloc_bitmap(
+) -> &'static mut mem::Bitmap<EARLY_ALLOC_NUM_BLOCKS, EARLY_ALLOC_BLOCK_SIZE> {
+    unsafe {
+        ((mem::KERNEL_START_PHYS + mem::MEMORY_SIZE / 2)
+            as *mut mem::Bitmap<EARLY_ALLOC_NUM_BLOCKS, EARLY_ALLOC_BLOCK_SIZE>)
+            .as_mut()
+            .expect("Kernel heap is null")
+    }
 }
 
-/// Initialize the root page-table and map the kernel
-///
-/// TODO: Parse the device tree passed in from OpenSBI
+/// Alllocate physical pages from the kernel heap.
+pub fn early_frame_alloc() -> Option<*mut u8> {
+    let map = early_frame_alloc_bitmap();
+    map.alloc(1)
+}
+
+/// Initialize a bitmap for pre-paging allocations.
 #[no_mangle]
-pub unsafe extern "C" fn paging_init() -> ! {
-    let page_offset = KERNEL_START_VIRT - KERNEL_START_PHYS;
-    let root = PageTable::new();
+unsafe extern "C" fn early_frame_alloc_init() {
+    let bitmap = early_frame_alloc_bitmap();
 
-    // Map the kernel text and data
-    for i in (0..KERNEL_SIZE).step_by(L0_PAGE_SIZE) {
-        root.map(
-            KERNEL_START_VIRT + i,
-            KERNEL_START_PHYS + i,
-            MappingLevel::FourKilobyte,
+    // Align to the nearest page, leaving space for the bitmap.
+    let bitmap_arena =
+        align!(mem::KERNEL_START_PHYS + mem::KERNEL_SIZE, mem::L0_PAGE_SIZE) as *mut u8;
+
+    // Initialize the bitmap.
+    *bitmap = mem::Bitmap::new(bitmap_arena);
+}
+
+/// Initialize the root page-table and map the kernel.
+///
+/// TODO: Parse the device tree passed in from OpenSBI.
+#[no_mangle]
+unsafe extern "C" fn paging_init() -> ! {
+    let page_offset = mem::KERNEL_START_VIRT - mem::KERNEL_START_PHYS;
+    let text_end_phys = mem::TEXT_END - page_offset;
+
+    // Map the kernel text and data.
+    for i in (mem::KERNEL_START_PHYS..text_end_phys).step_by(mem::L0_PAGE_SIZE) {
+        mem::ROOT_PAGE_TABLE_RAW.map_with_allocator(
+            i + page_offset,
+            i,
+            mem::MappingLevel::FourKilobyte,
             READ | EXECUTE | VALID,
+            early_frame_alloc,
         );
     }
 
-    // Map the page allocator bitmap
-    let palloc_bitmap = addr_of!(*palloc::get_bitmap());
-    root.map(
-        palloc_bitmap as usize + page_offset,
-        palloc_bitmap as usize,
-        MappingLevel::FourKilobyte,
+    let data_end_phys = mem::DATA_END - page_offset;
+
+    for i in (text_end_phys..data_end_phys).step_by(mem::L0_PAGE_SIZE) {
+        mem::ROOT_PAGE_TABLE_RAW.map_with_allocator(
+            i + page_offset,
+            i,
+            mem::MappingLevel::FourKilobyte,
+            READ | WRITE | VALID,
+            early_frame_alloc,
+        );
+    }
+
+    for i in
+        (mem::INIT_STACK_TOP - mem::INIT_STACK_SIZE..mem::INIT_STACK_TOP).step_by(mem::L0_PAGE_SIZE)
+    {
+        mem::ROOT_PAGE_TABLE_RAW.map_with_allocator(
+            i,
+            i - page_offset,
+            mem::MappingLevel::FourKilobyte,
+            READ | WRITE | VALID,
+            early_frame_alloc,
+        );
+    }
+
+    // Map the test device.
+    mem::ROOT_PAGE_TABLE_RAW.map_with_allocator(
+        mem::MMIO_DEV_TEST,
+        mem::MMIO_DEV_TEST,
+        mem::MappingLevel::FourKilobyte,
         READ | WRITE | VALID,
+        early_frame_alloc,
     );
 
-    // Map the page allocator arena
-    let palloc_arena = palloc_bitmap.add(L0_PAGE_SIZE);
-    for i in (0..L1_PAGE_SIZE).step_by(L0_PAGE_SIZE) {
-        root.map(
-            palloc_arena as usize + page_offset + i,
-            palloc_arena as usize + i,
-            MappingLevel::FourKilobyte,
+    // Map the physical memory.
+    // TODO: Map with huge pages.
+    for i in (0..mem::MEMORY_SIZE).step_by(mem::L0_PAGE_SIZE) {
+        mem::ROOT_PAGE_TABLE_RAW.map_with_allocator(
+            mem::KERNEL_START_PHYS + i,
+            mem::KERNEL_START_PHYS + i,
+            mem::MappingLevel::FourKilobyte,
             READ | WRITE | VALID,
+            early_frame_alloc,
         );
     }
 
-    // Map the kernel stack region
-    let kstack_bottom = KERNEL_START_PHYS + KERNEL_SIZE + PAGE_ALLOC_SIZE;
-    let kstack_top = kstack_bottom + KERNEL_STACK_SIZE;
-    for i in (0..KERNEL_STACK_SIZE).step_by(L0_PAGE_SIZE) {
-        root.map(
-            kstack_bottom + page_offset + i,
-            kstack_bottom + i,
-            MappingLevel::FourKilobyte,
-            READ | WRITE | VALID,
-        );
-    }
-
-    // Map the test device
-    root.map(
-        MMIO_DEV_TEST_VIRT,
-        MMIO_DEV_TEST_PHYS,
-        MappingLevel::FourKilobyte,
-        READ | WRITE | VALID,
-    );
-
-    // Set the MXR bit
+    // Set the MXR bit.
     asm!("csrc sstatus, {}", in(reg) 1 << 19, options(nostack));
 
-    // Set stvec interrupt vector to kmain
-
-    #[cfg(not(test))]
-    let kmain_virt: usize = (crate::kmain::kmain as usize - KERNEL_START_PHYS) + KERNEL_START_VIRT;
-    #[cfg(test)]
+    // Set stvec interrupt vector to kmain.
     let kmain_virt: usize =
-        (crate::kmain_test::kmain as usize - KERNEL_START_PHYS) + KERNEL_START_VIRT;
+        (crate::kmain as usize - mem::KERNEL_START_PHYS) + mem::KERNEL_START_VIRT;
+
+    let free_begin = early_frame_alloc_bitmap().boundary() as usize;
+
+    let gp: usize;
+    asm!("mv {}, gp", out(reg) gp);
 
     asm!("csrw stvec, {}", in(reg) kmain_virt, options(nostack));
 
-    // Write Sv39 config to the SATP register
-    satp::bootstrap(satp::Mode::Sv39, root, 0, kstack_top + page_offset, 0);
+    // Write Sv39 config to the SATP register.
+    satp::bootstrap(
+        satp::Mode::Sv39,
+        &mem::ROOT_PAGE_TABLE_RAW,
+        0,
+        mem::INIT_STACK_TOP,
+        gp + page_offset,
+        [
+            free_begin,
+            mem::MEMORY_SIZE - mem::KERNEL_SIZE,
+            page_offset,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+    );
 
-    // Fence and hope things don't blow up
+    // Fence and hope things don't blow up.
     asm!("sfence.vma", options(nostack));
     asm!("nop", options(noreturn))
 }
