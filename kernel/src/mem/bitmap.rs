@@ -1,5 +1,5 @@
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum BlockStatus {
     Free,
     Used,
@@ -16,6 +16,9 @@ pub struct Bitmap<const N: usize, const S: usize> {
     map: [BlockStatus; N],
     arena: *mut u8,
 }
+
+unsafe impl<const N: usize, const S: usize> Sync for Bitmap<N, S> {}
+unsafe impl<const N: usize, const S: usize> Send for Bitmap<N, S> {}
 
 impl<const N: usize, const S: usize> Bitmap<N, S> {
     pub fn new(arena: *mut u8) -> Bitmap<N, S> {
@@ -74,6 +77,7 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
     pub fn free(&mut self, ptr: *const u8) {
         let mut pos = ((ptr as usize) - (self.arena as usize)) / N;
         loop {
+            debug_assert_ne!(BlockStatus::Free, self.map[pos]);
             match self.map[pos] {
                 BlockStatus::Used => {
                     self.map[pos] = BlockStatus::Free;
@@ -83,7 +87,7 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
                     self.map[pos] = BlockStatus::Free;
                     return;
                 }
-                _ => unreachable!(),
+                _ => return,
             };
         }
     }

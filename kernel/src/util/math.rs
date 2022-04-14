@@ -18,6 +18,7 @@ macro_rules! mask_range {
     };
 }
 
+/// Aligns an address to a boundary
 #[macro_export]
 macro_rules! align {
     ($n:expr, $d:expr) => {
@@ -25,6 +26,7 @@ macro_rules! align {
     };
 }
 
+/// Evaluates to true if an address is aligned to a boundary
 #[macro_export]
 #[allow(clippy::nonminimal_bool)]
 macro_rules! is_aligned {
@@ -33,6 +35,7 @@ macro_rules! is_aligned {
     }};
 }
 
+/// Base 2 logarithm
 #[macro_export]
 macro_rules! log2 {
     ($n:expr) => {{
@@ -46,4 +49,25 @@ macro_rules! log2 {
 
         b
     }};
+}
+
+/// Clamp an expression between a min and max
+#[macro_export]
+macro_rules! clamp {
+    ($n:expr, $max:expr) => {
+        if $n > $max {
+            $max
+        } else {
+            $n
+        }
+    };
+    ($n:expr, $min:expr, $max:expr) => {
+        if $n > $max {
+            $max
+        } else if $n < $min {
+            $min
+        } else {
+            $n
+        }
+    };
 }

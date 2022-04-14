@@ -2,10 +2,11 @@
 
 usage="Usage: $0 [-g] [-t] [/path/to/kernel]"
 
-firmware="build/opensbi.bin"
+firmware="$(dirname $0)/../build/opensbi.bin"
+kernel="$(dirname $0)/../build/halogen.bin"
+
 qemu="qemu-system-riscv64"
 debug_flags=""
-kernel="build/halogen.bin"
 
 if [[ $# -gt 3 ]]; then
     echo "$usage"

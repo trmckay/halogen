@@ -4,22 +4,14 @@ name: style
 type: docker
 
 steps:
-- name: check style
-  image: trmckay/rust-riscv64
-  commands:
-  - apt install -y python3-pip
-  - pip3 install pre-commit
-  - pre-commit install
-  - pre-commit run trailing-whitespace -a
-  - pre-commit run end-of-file-fixer -a
-  - pre-commit run check-yaml -a
-  - pre-commit run check-added-large-files -a
-  - pre-commit run check-toml -a
-  - pre-commit run check-case-conflict -a
-  when:
-    event:
-    - pull_request
-    - push
+    - name: check style
+      image: trmckay/rust-riscv64
+      commands:
+          - cargo fmt --check
+      when:
+          event:
+              - pull_request
+              - push
 
 ---
 kind: pipeline
@@ -27,25 +19,25 @@ name: build
 type: docker
 
 steps:
-- name: build
-  image: trmckay/rust-riscv64
-  commands:
-  - make build/opensbi.bin
-  - make build/halogen.bin
-  - make build/halogen-test.bin
-  when:
-    ref:
-    - refs/heads/main
-    - refs/pull/*/head
+    - name: build
+      image: trmckay/rust-riscv64
+      commands:
+          - make build/opensbi.bin
+          - make build/halogen.bin
+          - make build/halogen-test.bin
+      when:
+          ref:
+              - refs/heads/main
+              - refs/pull/*/head
 
-- name: test
-  image: trmckay/rust-riscv64
-  commands:
-  - make test
-  when:
-    ref:
-    - refs/heads/main
-    - refs/pull/*/head
+    - name: test
+      image: trmckay/rust-riscv64
+      commands:
+          - make test
+      when:
+          ref:
+              - refs/heads/main
+              - refs/pull/*/head
 
 ---
 kind: pipeline
@@ -53,26 +45,26 @@ name: doc
 type: docker
 
 steps:
-- name: build docs
-  image: trmckay/rust-riscv64
-  commands:
-  - make doc
-  when:
-    event: push
-    branch: main
-    repo: tm/halogen
+    - name: build docs
+      image: trmckay/rust-riscv64
+      commands:
+          - make doc
+      when:
+          event: push
+          branch: main
+          repo: tm/halogen
 
-- name: deploy
-  image: drillster/drone-rsync
-  settings:
-    hosts: [ "ln-fre-1.trmckay.com" ]
-    port: 224
-    delete: true
-    target: /static/halogen/rustdoc
-    source: ./kernel/target/riscv64gc-unknown-none-elf/doc/*
-    key:
-      from_secret: rsync-static-key
-  when:
-    event: push
-    branch: main
-    repo: tm/halogen
+    - name: deploy
+      image: drillster/drone-rsync
+      settings:
+          hosts: ["static.trmckay.com"]
+          port: 224
+          delete: true
+          target: /static/halogen/rustdoc
+          source: ./kernel/target/riscv64gc-unknown-none-elf/doc/*
+          key:
+              from_secret: rsync-static-key
+      when:
+          event: push
+          branch: main
+          repo: tm/halogen

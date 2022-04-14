@@ -1,10 +1,10 @@
 OUTPUT_ARCH("riscv")
 
-ENTRY(_init)
+ENTRY(boot)
 
 SECTIONS
 {
-    . = 0x80200000;
+    . = 0xC0000000;
 
     PROVIDE(_KERNEL_START_VIRT = .);
 

@@ -1,12 +1,8 @@
-use core::ptr::addr_of;
-
-use lazy_static::lazy_static;
-use spin::Mutex;
-
-use crate::{is_mapping_aligned, mask_range, mem::frame_alloc};
+use crate::{is_mapping_aligned, mask_range, mem::frame_alloc, prelude::*};
 
 /// Level 0 page = 4K
 pub const L0_PAGE_SIZE: usize = 4096;
+pub const L0_PAGE_MASK: usize = 0xFFFF_FFFF_FFFF_F000;
 
 /// Level 1 page = 2M
 pub const L1_PAGE_SIZE: usize = 2 * 1024 * 1024;
@@ -42,12 +38,12 @@ pub mod pte_flags {
 
 use pte_flags::*;
 
-/// Map a virtual address to a physical address.
+/// Map a virtual address to a physical address
 ///
 /// # Safety
 ///
 /// This maps memory into the kernel address space, so should not overwrite any
-/// kernel text or structures.
+/// kernel text or structures
 pub unsafe fn map(virt_addr: usize, phys_addr: usize, flags: usize) {
     ROOT_PAGE_TABLE
         .lock()
@@ -83,18 +79,18 @@ pub struct PhysicalAddress {
 
 impl PhysicalAddress {
     /// Traverse the page-table and translate a virtual address to a physical
-    /// address.
+    /// address
     pub fn from_virt(virt_addr: VirtualAddress, root: &PageTable) -> Option<PhysicalAddress> {
         root.translate(virt_addr.addr)
             .map(PhysicalAddress::from_usize)
     }
 
-    /// Create a physical address directly.
+    /// Create a physical address directly
     pub fn from_usize(addr: usize) -> PhysicalAddress {
         PhysicalAddress { addr }
     }
 
-    /// Extract the physical page numbers from a physical address.
+    /// Extract the physical page numbers from a physical address
     pub fn ppn(&self, level: usize) -> usize {
         match level {
             2 => (self.addr & mask_range!(usize, 55, 30)) >> 30,
@@ -104,7 +100,7 @@ impl PhysicalAddress {
         }
     }
 
-    /// Extract the page offset from a physical address.
+    /// Extract the page offset from a physical address
     pub fn offset(&self) -> usize {
         self.addr & mask_range!(usize, 12, 0)
     }
@@ -116,12 +112,12 @@ pub struct VirtualAddress {
 }
 
 impl VirtualAddress {
-    /// Create a virtual address directly.
+    /// Create a virtual address directly
     pub fn from_usize(addr: usize) -> VirtualAddress {
         VirtualAddress { addr }
     }
 
-    /// Extract the virtual page numbers from a virtual address.
+    /// Extract the virtual page numbers from a virtual address
     pub fn vpn(&self, level: usize) -> usize {
         match level {
             2 => (self.addr >> 30) & FIELD_VPN,
@@ -132,7 +128,7 @@ impl VirtualAddress {
     }
 
     /// Extract the physical page numbers from a physical address as a mask
-    /// to combine with the PPN portion.
+    /// to combine with the PPN portion
     pub fn offset(&self, level: MappingLevel) -> usize {
         match level {
             MappingLevel::OneGigabyte => self.addr & mask_range!(usize, 29, 0),
@@ -144,7 +140,7 @@ impl VirtualAddress {
 
 /// A 64-bit Sv39 page-table entry
 ///
-/// Points to the next-level page-table or a physical address.
+/// Points to the next-level page-table or a physical address
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug)]
 pub struct PageTableEntry {
@@ -152,7 +148,7 @@ pub struct PageTableEntry {
 }
 
 impl PageTableEntry {
-    /// Set the flags of a page-table entry.
+    /// Set the flags of a page-table entry
     fn set_flags(&mut self, flags: usize) {
         debug_assert!(flags <= 0xFF);
         self.entry = (self.entry & !0xFF) | (flags & 0xFF);
@@ -163,29 +159,29 @@ impl PageTableEntry {
         self.entry = (ppn >> 2) | (flags & 0xFF);
     }
 
-    /// Set the physical address of a leaf PTE.
+    /// Set the physical address of a leaf PTE
     pub fn set_phys_addr(&mut self, phys_addr: usize, flags: usize) {
         debug_assert_ne!(0, flags & (READ | WRITE | EXECUTE));
         self.set(phys_addr as usize, flags);
     }
 
-    /// Set the pointer to the next level page-table.
+    /// Set the pointer to the next level page-table
     pub fn set_next_level(&mut self, next: &PageTable) {
-        self.set(addr_of!(*next) as usize, VALID);
+        self.set(ptr::addr_of!(*next) as usize, VALID);
     }
 
-    /// Returns true if the entry is valid.
+    /// Returns true if the entry is valid
     pub fn is_valid(&self) -> bool {
         self.entry & VALID != 0
     }
 
-    /// Returns true if the entry is a leaf.
+    /// Returns true if the entry is a leaf
     pub fn is_leaf(&self) -> bool {
         self.entry & (READ | WRITE | EXECUTE) != 0
     }
 
     /// Extract the physical page numbers from a PTE as a mask to
-    /// combine w/ the VPN portion of the translated address.
+    /// combine w/ the VPN portion of the translated address
     pub fn translation(&self, level: MappingLevel) -> usize {
         (match level {
             MappingLevel::OneGigabyte => self.entry & mask_range!(usize, 53, 28),
@@ -194,7 +190,7 @@ impl PageTableEntry {
         } << 2) as usize
     }
 
-    /// Get a reference to the next level page-table.
+    /// Get a reference to the next level page-table
     pub fn next_level(&self) -> &'static mut PageTable {
         unsafe {
             (((self.entry & mask_range!(usize, 53, 10)) << 2) as *mut PageTable)
@@ -211,7 +207,7 @@ pub struct PageTable {
 }
 
 impl PageTable {
-    /// Set all the entries to invalid.
+    /// Set all the entries to invalid
     pub fn clear(&mut self) {
         for entry in self.entries.iter_mut() {
             *entry = PageTableEntry { entry: 0 };
@@ -219,31 +215,29 @@ impl PageTable {
     }
 
     /// Allocate a physical page on the kernel heap and clear it for use as
-    /// a page-table.
+    /// a page-table
     pub fn new<F>(alloc: F) -> &'static mut PageTable
     where
-        F: Fn() -> Option<*mut u8>,
-    {
+        F: Fn() -> Option<*mut u8>, {
         let page = alloc().expect("could not allocate page");
         let pt = unsafe { PageTable::from_ptr(page as *mut PageTable) };
         pt.clear();
         pt
     }
 
-    /// Get the `n`th entry in the page-table.
+    /// Get the `n`th entry in the page-table
     pub fn get(&self, n: usize) -> &'static mut PageTableEntry {
         unsafe {
-            (addr_of!(self.entries[n]) as *mut PageTableEntry)
+            (ptr::addr_of!(self.entries[n]) as *mut PageTableEntry)
                 .as_mut()
                 .expect("null pointer")
         }
     }
 
-    /// Get or create the next level page table.
+    /// Get or create the next level page table
     pub fn next_level_or_alloc<F>(&self, n: usize, alloc: F) -> &'static mut PageTable
     where
-        F: Fn() -> Option<*mut u8>,
-    {
+        F: Fn() -> Option<*mut u8>, {
         let entry = self.get(n);
         if !entry.is_valid() {
             let pt = PageTable::new(&alloc);
@@ -254,17 +248,17 @@ impl PageTable {
         }
     }
 
-    /// Cast a pointer to a root page-table; useful when initializing the MMU.
+    /// Cast a pointer to a root page-table; useful when initializing the MMU
     ///
     /// # Safety
     ///
-    /// `ptr` must point to a valid page table.
+    /// `ptr` must point to a valid page table
     pub unsafe fn from_ptr(ptr: *mut PageTable) -> &'static mut PageTable {
         ptr.as_mut().expect("null pointer")
     }
 
     /// Create a new MMU mapping, but specify the allocator to use for new
-    /// pages.
+    /// pages
     pub fn map_with_allocator<F>(
         &mut self,
         virt_addr: usize,
@@ -273,39 +267,40 @@ impl PageTable {
         flags: usize,
         alloc: F,
     ) where
-        F: Fn() -> Option<*mut u8>,
-    {
+        F: Fn() -> Option<*mut u8>, {
         debug_assert!(is_mapping_aligned!(virt_addr, level));
         debug_assert!(is_mapping_aligned!(phys_addr, level));
 
         let virt_addr = VirtualAddress::from_usize(virt_addr);
 
         let mut vpn_num = 2;
-        // Start at the root page-table.
+        // Start at the root page-table
         let mut pt = self;
 
-        // For level 1 and level 0 mappings, get the next level page-table.
+        // For level 1 and level 0 mappings, get the next level page-table
         if let MappingLevel::TwoMegabyte | MappingLevel::FourKilobyte = level {
             pt = pt.next_level_or_alloc(virt_addr.vpn(vpn_num), &alloc);
             vpn_num -= 1;
         }
 
-        // For level 1 mappings, this PT contains the branch entry.
-        // For level 0 mapping, get the next level page table.
+        // For level 1 mappings, this PT contains the branch entry
+        // For level 0 mapping, get the next level page table
         if let MappingLevel::FourKilobyte = level {
             pt = pt.next_level_or_alloc(virt_addr.vpn(vpn_num), &alloc);
             vpn_num -= 1;
         }
 
-        // Get the branch entry and set the address.
+        // Get the branch entry and set the address
         pt.get(virt_addr.vpn(vpn_num))
             .set_phys_addr(phys_addr, flags);
     }
 
+    /// Map a virtual address to a physical address
     pub fn map(&mut self, virt_addr: usize, phys_addr: usize, level: MappingLevel, flags: usize) {
         self.map_with_allocator(virt_addr, phys_addr, level, flags, frame_alloc);
     }
 
+    /// Translate a virtual address to its physical address
     pub fn translate(&self, virt_addr: usize) -> Option<usize> {
         let virt_addr = VirtualAddress::from_usize(virt_addr);
         let mut pt = self;

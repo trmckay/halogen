@@ -1,6 +1,9 @@
 use core::arch::asm;
 
-pub mod uart;
+mod hsm;
+mod timer;
+
+pub use timer::set_timer;
 
 #[derive(Clone, Copy, Debug)]
 pub enum SbiError {
@@ -26,7 +29,7 @@ impl SbiError {
     }
 }
 
-pub fn sbi_ecall(args: [usize; 6], func: usize, ext: usize) -> Result<usize, SbiError> {
+fn sbi_ecall(args: [usize; 6], ext: usize, func: usize) -> Result<usize, SbiError> {
     let error: isize;
     let val: usize;
 
@@ -51,7 +54,3 @@ pub fn sbi_ecall(args: [usize; 6], func: usize, ext: usize) -> Result<usize, Sbi
         None => Ok(val),
     }
 }
-
-pub const UART_EXT_ID: usize = 0;
-pub const UART_PUTC_FUNC_ID: usize = 1;
-pub const UART_GETC_FUNC_ID: usize = 2;

@@ -1,20 +1,15 @@
 extern crate alloc;
 
 use alloc::alloc::{GlobalAlloc, Layout};
-pub use alloc::{boxed::*, vec, vec::*};
 use core::{
-    fmt,
     iter::successors,
     mem::size_of,
     ptr::{addr_of, addr_of_mut, null_mut},
 };
 
-use lazy_static::lazy_static;
-use spin::Mutex;
+use crate::{is_mapping_aligned, mem, mem::paging, prelude::*};
 
-use crate::{is_mapping_aligned, mem, mem::paging};
-
-pub const HEAP_SIZE: usize = 8 * 1024 * 1024;
+pub const HEAP_SIZE: usize = 16 * 1024 * 1024;
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: GlobalAllocator = GlobalAllocator;
@@ -23,13 +18,13 @@ lazy_static! {
     static ref HEAP_ALLOCATOR: Mutex<Option<FreeListAllocator>> = Mutex::new(None);
 }
 
-/// Initialize the kernel heap.
+/// Initialize the kernel heap
 ///
 /// # Safety
 ///
 /// `start` must point to the virtual address of the heap region and `HEAP_SIZE`
 /// bytes of physical frames must be available (both in the virtual address
-/// space and physical frames).
+/// space and physical frames)
 pub unsafe fn heap_alloc_init(start: usize) {
     debug_assert!(is_mapping_aligned!(
         start,
@@ -46,48 +41,71 @@ pub unsafe fn heap_alloc_init(start: usize) {
         );
     }
 
-    log::info!(
-        "Kernel heap: {:p}..{:p}",
-        start as *const u8,
-        (start + HEAP_SIZE) as *const u8
-    );
-
     // Initialize the allocator.
     *HEAP_ALLOCATOR.lock() = Some(FreeListAllocator::new(start, HEAP_SIZE));
 }
 
-/// Allocate `size` bytes in the kernel heap.
+/// Allocate `size` bytes in the kernel heap
 pub fn kmalloc(size: usize) -> Option<*mut u8> {
     match HEAP_ALLOCATOR.lock().as_mut() {
-        Some(allocator) => allocator.alloc(size),
-        None => None,
+        Some(allocator) => {
+            let ptr = allocator.alloc(size);
+            match ptr {
+                Some(ptr) => trace!("kmalloc({}) -> {:p}", size, ptr),
+                None => error!("kmalloc({}): allocator returned None", size),
+            }
+            ptr
+        }
+        None => {
+            error!("kmalloc({}): could not acquire lock on allocator", size);
+            None
+        }
     }
 }
 
-/// Calculate heap usage; returns `(free, capacity)`.
-pub fn heap_space() -> (usize, usize) {
+/// Calculate heap usage
+pub fn free_space() -> usize {
     match HEAP_ALLOCATOR.lock().as_ref() {
-        Some(allocator) => (allocator.free_space(), allocator.size),
-        None => (0, 0),
+        Some(allocator) => allocator.free_space(),
+        None => 0,
     }
 }
 
-/// Returns true if the heap has no allocations.
-pub fn heap_empty() -> bool {
+/// Calculate number of heap blocks free
+pub fn free_blocks() -> usize {
     match HEAP_ALLOCATOR.lock().as_ref() {
-        Some(allocator) => allocator.free_space() == allocator.size - size_of::<u32>(),
-        None => false,
+        Some(allocator) => {
+            allocator
+                .head
+                .as_ref()
+                .map(|h| h.iter().count())
+                .unwrap_or(0)
+        }
+        None => 0,
     }
 }
 
-/// Free a heap allocation.
+/// Calculate number of heap blocks in use
+pub fn used_blocks() -> usize {
+    match HEAP_ALLOCATOR.lock().as_ref() {
+        Some(allocator) => allocator.current_allocs,
+        None => 0,
+    }
+}
+
+/// Free a heap allocation
 ///
 /// # Safety
 ///
-/// `ptr` must be a pointer returned by `kmalloc()`.
+/// `ptr` must be a pointer returned by `kmalloc()`
 pub unsafe fn kfree(ptr: *mut u8) {
-    if let Some(allocator) = HEAP_ALLOCATOR.lock().as_mut() {
-        allocator.free(ptr)
+    trace!("kfree({:p})", ptr);
+
+    match HEAP_ALLOCATOR.lock().as_mut() {
+        Some(allocator) => {
+            allocator.free(ptr);
+        }
+        None => error!("kfree({:p}): could not acquire lock on allocator", ptr),
     }
 }
 
@@ -108,7 +126,7 @@ unsafe impl GlobalAlloc for GlobalAllocator {
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: Layout) -> ! {
-    panic!("Failed to allocate: {:?}", layout);
+    panic!("Global allocator error: size={}", layout.size());
 }
 
 #[repr(C)]
@@ -116,56 +134,79 @@ fn alloc_error_handler(layout: Layout) -> ! {
 struct Block {
     size: u32,
     next: *mut Block,
+    prev: *mut Block,
 }
 
 unsafe impl Sync for Block {}
 unsafe impl Send for Block {}
 
 impl Block {
-    /// Create a new block. `size` is the size of the whole block including the
-    /// header.
-    pub fn new(size: usize) -> Block {
+    /// Create a new block
+    ///
+    /// `size` is the size of the whole block including the header
+    fn new(size: usize) -> Block {
         Block {
             size: size as u32,
             next: null_mut(),
+            prev: null_mut(),
         }
     }
 
-    pub unsafe fn from_ptr(ptr: *mut u8) -> Option<&'static mut Block> {
+    /// Cast a raw pointer to a `Block` reference
+    unsafe fn from_ptr(ptr: *mut u8) -> Option<&'static mut Block> {
         (ptr.sub(size_of::<u32>()) as *mut Block).as_mut()
     }
 
-    pub fn next(&mut self) -> Option<&Block> {
+    /// Get a reference to this block's next
+    fn next(&mut self) -> Option<&Block> {
         unsafe { self.next.as_ref() }
     }
 
-    pub fn next_mut(&mut self) -> Option<&mut Block> {
+    /// Get a mutable reference to this block's next
+    fn next_mut(&mut self) -> Option<&mut Block> {
         unsafe { self.next.as_mut() }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Block> {
+    /// Get a reference to this block's next
+    fn prev(&mut self) -> Option<&Block> {
+        unsafe { self.prev.as_ref() }
+    }
+
+    /// Get a mutable reference to this block's next
+    fn prev_mut(&mut self) -> Option<&mut Block> {
+        unsafe { self.prev.as_mut() }
+    }
+
+    /// Iterate over the linked list starting at this block
+    fn iter(&self) -> impl Iterator<Item = &Block> {
         successors(Some(self), move |b| unsafe { b.next.as_ref() })
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Block> {
+    /// Iterate mutably over the linked list starting at this block
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut Block> {
         successors(Some(self), move |b| unsafe { b.next.as_mut() })
     }
 
-    pub fn allocation(&mut self) -> *mut u8 {
+    /// Get a pointer to the usable allocation of this block
+    fn allocation(&mut self) -> *mut u8 {
         unsafe { (addr_of!(*self) as *mut u8).add(size_of::<u32>()) }
     }
 
-    pub fn space(&self) -> usize {
+    /// Get the count of usable bytes in this block
+    fn space(&self) -> usize {
         self.size as usize - size_of::<u32>()
     }
 
-    pub fn boundary(&self) -> *const u8 {
+    /// Get a pointer to the end of this block
+    fn boundary(&self) -> *const u8 {
         unsafe { (addr_of!(*self) as *const u8).add(self.size as usize) }
     }
 
-    pub unsafe fn link(&mut self, prev: &mut Block) {
-        if prev.allocation().add(prev.space()) as usize == addr_of!(*self) as usize {
+    /// Link another block to this block
+    unsafe fn link(&mut self, prev: &mut Block) {
+        if prev.boundary() as usize == addr_of!(*self) as usize {
             prev.size += self.size;
+            self.prev = addr_of_mut!(*prev);
             while !prev.next.is_null()
                 && prev.allocation().add(prev.space()) as usize == prev.next as usize
             {
@@ -174,32 +215,46 @@ impl Block {
             }
         } else {
             self.next = prev.next;
+            self.prev = addr_of_mut!(*prev);
             prev.next = addr_of_mut!(*self);
         }
     }
 
-    // Claim memory for a new block with the requested space.
-    pub fn split(&mut self, space: usize) -> Option<(*mut u8, *mut Block)> {
-        let size = space + size_of::<u32>();
-        if size > self.space() {
-            None
-        } else {
-            let allocation = self.allocation();
-            let new_block = unsafe { self.allocation().add(space) as *mut Block };
+    /// Reserve `size` bytes for usage in the current block and create a new
+    /// block at the end of the allocation
+    fn reserve(&mut self, size: usize) -> Result<Option<*mut Block>, ()> {
+        let used_block_size = (size + size_of::<u32>()) as u32;
+        // A new block can fit in the free space
+        if (used_block_size as usize) < self.space() {
+            let new_block = unsafe { self.allocation().add(size) as *mut Block };
 
             unsafe {
+                // Current block is now in use, previous' next must point to the new block
+                if !self.prev.is_null() {
+                    (*self.prev).next = new_block;
+                }
+
                 (*new_block).next = self.next;
-                (*new_block).size = self.size - size as u32;
+                (*new_block).prev = self.prev;
+                (*new_block).size = self.size - used_block_size;
             }
 
-            self.size = size as u32;
+            self.size = used_block_size;
 
-            Some((allocation, new_block))
+            Ok(Some(new_block))
+        }
+        // The whole block can be used for the allocation
+        else if size <= self.space() {
+            Ok(None)
+        }
+        // There is not enough space in this block
+        else {
+            Err(())
         }
     }
 }
 
-pub struct FreeListAllocator {
+struct FreeListAllocator {
     head: Option<&'static mut Block>,
     start: usize,
     size: usize,
@@ -208,32 +263,13 @@ pub struct FreeListAllocator {
     total_frees: usize,
 }
 
-impl fmt::Debug for FreeListAllocator {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "head: {:p}, free blocks: {}, allocated blocks: {}",
-            match &self.head {
-                Some(r) => addr_of!(**r),
-                None => null_mut(),
-            },
-            match &self.head {
-                Some(r) => r.iter().count(),
-                None => 0,
-            },
-            self.current_allocs,
-        )?;
-        Ok(())
-    }
-}
-
 impl FreeListAllocator {
-    /// Initialize a linked-list allocator.
+    /// Initialize a linked-list allocator
     ///
     /// # Safety
     ///
-    /// `start` must be a contiguous region of `size` bytes.
-    pub unsafe fn new(start: usize, size: usize) -> FreeListAllocator {
+    /// `start` must be a contiguous region of `size` bytes
+    unsafe fn new(start: usize, size: usize) -> FreeListAllocator {
         let head = start as *mut Block;
         *head = Block::new(size);
 
@@ -247,57 +283,49 @@ impl FreeListAllocator {
         }
     }
 
-    pub fn free_space(&self) -> usize {
+    /// Calculate the amount of usable space in the arena
+    fn free_space(&self) -> usize {
         match &self.head {
             Some(head) => head.iter().map(|b| b.space()).sum(),
             None => 0,
         }
     }
 
-    pub fn alloc(&mut self, size: usize) -> Option<*mut u8> {
-        let size = if size < size_of::<Block>() {
-            size_of::<Block>()
-        } else {
-            size
-        };
+    /// Allocate some bytes
+    fn alloc(&mut self, size: usize) -> Option<*mut u8> {
+        let size = core::cmp::max(size, size_of::<Block>());
+        let (used_block, new_block) = self
+            .head
+            .as_mut()
+            .and_then(|head| head.iter_mut().find(|b| b.space() >= size))
+            .map(|block| {
+                let new_block = block.reserve(size).expect("couldn't reserve from block");
+                (block, new_block)
+            })?;
 
-        match &mut self.head {
-            Some(head) => {
-                let block = match head.iter_mut().find(|b| b.space() >= size) {
-                    Some(b) => b,
-                    None => return None,
-                };
+        let ptr = used_block.allocation();
 
-                let alloc = block.split(size);
-
-                if let Some((alloc, block)) = alloc {
-                    unsafe {
-                        if head.allocation() == Block::from_ptr(alloc).unwrap().allocation() {
-                            self.head = block.as_mut();
-                        }
-                    }
-
-                    self.current_allocs += 1;
-                    self.total_allocs += 1;
-
-                    Some(alloc)
-                } else {
-                    None
-                }
-            }
-            None => None,
+        // Replace the head if necessary
+        if ptr::eq(used_block, *self.head.as_ref().unwrap()) {
+            unsafe { self.head = new_block.and_then(|b| b.as_mut()) }
         }
+
+        self.total_allocs += 1;
+        self.current_allocs += 1;
+
+        Some(ptr)
     }
 
     /// Free an allocation
     ///
     /// # Safety
     ///
-    /// `ptr` must be an allocation returned by `self.alloc()`.
-    pub unsafe fn free(&mut self, ptr: *mut u8) {
-        self.current_allocs -= 1;
+    /// `ptr` must be an allocation returned by `self.alloc()`
+    unsafe fn free(&mut self, ptr: *mut u8) {
         let free_block = Block::from_ptr(ptr).unwrap();
+
         free_block.next = null_mut();
+        free_block.prev = null_mut();
 
         let prev = self
             .head
@@ -316,8 +344,7 @@ impl FreeListAllocator {
             }
             self.head = Some(free_block);
         }
+
+        self.current_allocs -= 1;
     }
 }
-
-#[cfg(test)]
-mod test {}

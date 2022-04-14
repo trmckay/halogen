@@ -1,28 +1,26 @@
-use spin::Mutex;
-
-use crate::{is_aligned, mem::L0_PAGE_SIZE};
+use crate::{is_aligned, mem::L0_PAGE_SIZE, prelude::*};
 
 static FRAME_ALLOCATOR: Mutex<Option<FrameAllocator<L0_PAGE_SIZE>>> = Mutex::new(None);
 
-/// Intitialize the frame allocator.
+/// Intitialize the frame allocator
 ///
 /// # Safety
 ///
 /// `start` should point to a `size` bytes contiguous region of free physical
-/// memory.
+/// memory
 pub unsafe fn frame_alloc_init(start: usize, size: usize) {
     *FRAME_ALLOCATOR.lock() = Some(FrameAllocator::new(start, size));
 }
 
-/// Allocate a physical frame (the frame is not mapped).
+/// Allocate a physical frame (the frame is not mapped)
 pub fn frame_alloc() -> Option<*mut u8> {
-    let r = FRAME_ALLOCATOR.lock().as_mut().unwrap().alloc();
+    let allocator = FRAME_ALLOCATOR.lock().as_mut().unwrap().alloc();
 
-    if let Err(why) = &r {
-        log::warn!("Failed to allocate frame: {:?}", why);
+    if let Err(why) = &allocator {
+        warn!("Failed to allocate frame: {:?}", why);
     }
 
-    match r {
+    match allocator {
         Ok(ptr) => Some(ptr),
         Err(_) => None,
     }
@@ -41,21 +39,25 @@ struct FreeFrame {
 }
 
 impl FreeFrame {
+    /// Create a new frame with no next
     pub fn new() -> FreeFrame {
         FreeFrame {
             next: core::ptr::null_mut(),
         }
     }
 
+    /// Get a reference to the next frame
     pub fn next(&self) -> Option<&FreeFrame> {
         unsafe { self.next.as_ref() }
     }
 
+    /// Get a mutable reference to the next frame
     pub fn next_mut(&mut self) -> Option<&'static mut FreeFrame> {
         unsafe { self.next.as_mut() }
     }
 }
 
+/// Physical frame allocator
 pub struct FrameAllocator<const B: usize> {
     start: *mut u8,
     brk: usize,
@@ -68,7 +70,7 @@ unsafe impl<const B: usize> Send for FrameAllocator<B> {}
 
 /// Physical frame allocator
 impl<const B: usize> FrameAllocator<B> {
-    /// Create a frame allocator for a specific arena.
+    /// Create a frame allocator for a specific arena
     pub unsafe fn new(start: usize, size: usize) -> FrameAllocator<B> {
         debug_assert!(is_aligned!(start as usize, B));
         debug_assert!(is_aligned!(size, B));
@@ -83,10 +85,12 @@ impl<const B: usize> FrameAllocator<B> {
         }
     }
 
+    /// Returns true if the pointer is in the arena
     fn in_bounds(&self, ptr: *const u8) -> bool {
         (ptr as usize - self.start as usize) < self.size
     }
 
+    /// Allocate a new frame or return an error
     pub fn alloc(&mut self) -> Result<*mut u8, FrameAllocatorError> {
         match self.head {
             Some(frame) => {
@@ -103,6 +107,7 @@ impl<const B: usize> FrameAllocator<B> {
         }
     }
 
+    /// Free a frame and return an error if this fail
     pub unsafe fn free(&mut self, ptr: *mut u8, count: usize) -> Result<(), FrameAllocatorError> {
         if !is_aligned!(ptr as usize, B) {
             return Err(FrameAllocatorError::Misalignment(ptr));

@@ -7,85 +7,121 @@
     naked_functions,
     fn_align,
     asm_sym,
-    alloc_error_handler
+    asm_const,
+    alloc_error_handler,
+    stmt_expr_attributes,
+    is_some_with
 )]
 #![allow(arithmetic_overflow)]
 #![allow(dead_code)]
-#![test_runner(crate::tests::run_tests)]
+#![test_runner(crate::test::run_tests)]
 #![reexport_test_harness_main = "test_harness"]
 
 #[cfg(not(target_arch = "riscv64"))]
-core::compile_error!("Halogen only supports riscv64");
+core::compile_error!("riscv64 is the only supported target_arch");
 
-/// Architecture specifics
+/// Architecture state and functionality
 pub mod arch;
 /// Entrypoint for OpenSBI
-mod boot;
-/// Logging utilities
+pub mod boot;
+/// I/O devices
+pub mod io;
+/// Interrupt and trap handlers
+pub mod irq;
+/// Debug logging over UART
 pub mod log;
 /// Memory management
 pub mod mem;
 /// Panic language-feature
-mod panic;
+pub mod panic;
+/// Crate-wide imports and definitions
+pub mod prelude;
 /// Interfacing with OpenSBI
 pub mod sbi;
+/// System call definitions
+pub mod syscall;
 /// Unit and integration tests
-#[cfg(test)]
-mod tests;
-/// Trap handlers
-mod trap;
+pub mod test;
+/// Kernel thread primitives
+pub mod thread;
 /// Bitwise manipulation utilities
 pub mod util;
 
-const MOTD: &str = r"
- _   _       _
-| | | | __ _| | ___   __ _  ___ _ __
-| |_| |/ _` | |/ _ \ / _` |/ _ | '_ \
-|  _  | (_| | | (_) | (_| |  __| | | |
-|_| |_|\__,_|_|\___/ \__, |\___|_| |_|
-                     |___/
-";
+use prelude::*;
 
-use core::arch::asm;
+// TODO: The hart ID should be passed into/saved by `kmain()` and `HART_ID`
+// should be hart-local and lock-free
+pub static mut HART_ID: AtomicUsize = AtomicUsize::new(0);
 
-/// Entry-point for the kernel. The arguments are the beginning virtual
-/// address and size of the memory available to the kernel.
+#[macro_export]
+macro_rules! hart_id {
+    () => {
+        #[allow(unused_unsafe)]
+        unsafe {
+            $crate::HART_ID.load(Ordering::Relaxed)
+        }
+    };
+}
+
+/// Entry-point for the kernel
 ///
 /// # Safety
 ///
-/// `free_start` should point to a mapped, writeable, page-aligned, and free
-/// address. `free_size` should be page-aligned.
+/// * `free_start` should point to a mapped, writeable, page-aligned, and free
+///   address
+/// * `free_size` should be page-aligned
 #[allow(named_asm_labels)]
 #[repr(align(4))]
-pub unsafe extern "C" fn kmain(free_start: usize, free_size: usize, page_offset: usize) -> ! {
-    asm!("csrw stvec, {}", in(reg) trap::trap_handler);
+pub unsafe extern "C" fn kinit(free_start: usize, free_size: usize, page_offset: usize) -> ! {
+    register::stvec::write(
+        irq::trap::trap_shim as usize,
+        register::stvec::TrapMode::Direct,
+    );
 
-    log::LOGGER.register();
-
-    println!("{}", MOTD);
-
+    // Initialize the physical frame allocator
     mem::frame_alloc_init(free_start, free_size);
-    log::info!(
-        "Available memory: {}M @ {:p}",
-        free_size / (1024 * 1024),
-        free_start as *const u8
-    );
 
+    // Save the page offset for later use
     *mem::paging::PAGE_OFFSET.lock() = page_offset;
-    log::info!(
-        "Page offset: {:p}",
-        *mem::paging::PAGE_OFFSET.lock() as *const u8
-    );
 
+    // Initialize the heap allocator
     let heap_addr = free_start + page_offset;
-    let stack_addr = heap_addr + mem::heap::HEAP_SIZE;
-
-    mem::kstack_init(stack_addr);
-
     mem::heap_alloc_init(heap_addr);
+
+    // Initialize the stack allocator
+    mem::stack_init(heap_addr + mem::heap::HEAP_SIZE);
+
+    // Allocate trap-handler memory
+    irq::setup();
+    irq::enable();
 
     #[cfg(test)]
     crate::test_harness();
 
-    exit!(0);
+    // Handoff execution to the thread scheduler
+    thread::handoff(kmain, 0);
+}
+
+extern "C" fn kmain(_: usize) -> usize {
+    // Enable external interrupts
+    irq::enable_external();
+
+    // Setup UART
+    io::uart::enable_plic_int();
+    io::uart::UART.lock().init();
+
+    thread::spawn(thread_test, 0);
+    thread::spawn(thread_test, 1);
+
+    loop {
+        unsafe {
+            riscv::asm::wfi();
+        }
+    }
+}
+
+extern "C" fn thread_test(arg: usize) -> usize {
+    loop {
+        unsafe { print_unsafe!("{}", arg) }
+    }
 }
