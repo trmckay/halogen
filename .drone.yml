@@ -61,7 +61,7 @@ steps:
           port: 224
           delete: true
           target: /static/halogen/rustdoc
-          source: ./kernel/target/riscv64gc-unknown-none-elf/doc/*
+          source: ./target/doc
           key:
               from_secret: rsync-static-key
       when:
