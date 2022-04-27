@@ -77,17 +77,18 @@ pub struct PhysicalAddress {
     addr: usize,
 }
 
+impl From<usize> for PhysicalAddress {
+    fn from(n: usize) -> PhysicalAddress {
+        PhysicalAddress { addr: n }
+    }
+}
+
+
 impl PhysicalAddress {
     /// Traverse the page-table and translate a virtual address to a physical
     /// address
     pub fn from_virt(virt_addr: VirtualAddress, root: &PageTable) -> Option<PhysicalAddress> {
-        root.translate(virt_addr.addr)
-            .map(PhysicalAddress::from_usize)
-    }
-
-    /// Create a physical address directly
-    pub fn from_usize(addr: usize) -> PhysicalAddress {
-        PhysicalAddress { addr }
+        root.translate(virt_addr.addr).map(PhysicalAddress::from)
     }
 
     /// Extract the physical page numbers from a physical address
@@ -111,12 +112,13 @@ pub struct VirtualAddress {
     addr: usize,
 }
 
-impl VirtualAddress {
-    /// Create a virtual address directly
-    pub fn from_usize(addr: usize) -> VirtualAddress {
-        VirtualAddress { addr }
+impl From<usize> for VirtualAddress {
+    fn from(n: usize) -> VirtualAddress {
+        VirtualAddress { addr: n }
     }
+}
 
+impl VirtualAddress {
     /// Extract the virtual page numbers from a virtual address
     pub fn vpn(&self, level: usize) -> usize {
         match level {
@@ -218,7 +220,7 @@ impl PageTable {
     /// a page-table
     pub fn new<F>(alloc: F) -> &'static mut PageTable
     where
-        F: Fn() -> Option<*mut u8>, {
+        F: Fn() -> Option<usize>, {
         let page = alloc().expect("could not allocate page");
         let pt = unsafe { PageTable::from_ptr(page as *mut PageTable) };
         pt.clear();
@@ -237,7 +239,7 @@ impl PageTable {
     /// Get or create the next level page table
     pub fn next_level_or_alloc<F>(&self, n: usize, alloc: F) -> &'static mut PageTable
     where
-        F: Fn() -> Option<*mut u8>, {
+        F: Fn() -> Option<usize>, {
         let entry = self.get(n);
         if !entry.is_valid() {
             let pt = PageTable::new(&alloc);
@@ -267,11 +269,11 @@ impl PageTable {
         flags: usize,
         alloc: F,
     ) where
-        F: Fn() -> Option<*mut u8>, {
+        F: Fn() -> Option<usize>, {
         debug_assert!(is_mapping_aligned!(virt_addr, level));
         debug_assert!(is_mapping_aligned!(phys_addr, level));
 
-        let virt_addr = VirtualAddress::from_usize(virt_addr);
+        let virt_addr = VirtualAddress::from(virt_addr);
 
         let mut vpn_num = 2;
         // Start at the root page-table
@@ -302,7 +304,7 @@ impl PageTable {
 
     /// Translate a virtual address to its physical address
     pub fn translate(&self, virt_addr: usize) -> Option<usize> {
-        let virt_addr = VirtualAddress::from_usize(virt_addr);
+        let virt_addr = VirtualAddress::from(virt_addr);
         let mut pt = self;
 
         for level in (0..=2).rev() {

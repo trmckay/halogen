@@ -38,6 +38,8 @@ pub mod panic;
 pub mod prelude;
 /// Interfacing with OpenSBI
 pub mod sbi;
+/// Scheduler API
+pub mod sched;
 /// System call definitions
 pub mod syscall;
 /// Unit and integration tests
@@ -72,37 +74,54 @@ macro_rules! hart_id {
 /// * `free_size` should be page-aligned
 #[allow(named_asm_labels)]
 #[repr(align(4))]
-pub unsafe extern "C" fn kinit(free_start: usize, free_size: usize, page_offset: usize) -> ! {
+pub unsafe extern "C" fn kinit(free_start: *mut u8, free_size: usize, page_offset: usize) -> ! {
     register::stvec::write(
         irq::trap::trap_shim as usize,
         register::stvec::TrapMode::Direct,
     );
 
+    println_unsafe!("\n---\n");
+
+    // Trace level logging on debug builds
+    #[cfg(debug_assertions)]
+    log::set_level(log::Level::Trace);
+
+    trace!("Entered kinit, bootstrap complete");
+
+    info!("Page offset: {:p}", page_offset as *const u8);
+    info!("Free memory start: {:p}", free_start as *const u8);
+    info!("Free memory size: {:.04}M", free_size as f32 / MIB as f32);
+
     // Initialize the physical frame allocator
-    mem::frame_alloc_init(free_start, free_size);
+    mem::frame_alloc_init(free_start as usize, free_size);
 
     // Save the page offset for later use
     *mem::paging::PAGE_OFFSET.lock() = page_offset;
 
     // Initialize the heap allocator
-    let heap_addr = free_start + page_offset;
-    mem::heap_alloc_init(heap_addr);
+    let heap_addr = free_start.add(page_offset);
+    mem::heap_alloc_init(heap_addr, mem::heap::HEAP_SIZE);
 
     // Initialize the stack allocator
-    mem::stack_init(heap_addr + mem::heap::HEAP_SIZE);
+    mem::stack_init(
+        heap_addr.add(mem::heap::HEAP_SIZE),
+        mem::stack::STACK_REGION_SIZE,
+    );
 
     // Allocate trap-handler memory
     irq::setup();
     irq::enable();
-
-    #[cfg(test)]
-    crate::test_harness();
 
     // Handoff execution to the thread scheduler
     thread::handoff(kmain, 0);
 }
 
 extern "C" fn kmain(_: usize) -> usize {
+    trace!("Entered kmain");
+
+    #[cfg(test)]
+    crate::test_harness();
+
     // Enable external interrupts
     irq::enable_external();
 
@@ -110,18 +129,5 @@ extern "C" fn kmain(_: usize) -> usize {
     io::uart::enable_plic_int();
     io::uart::UART.lock().init();
 
-    thread::spawn(thread_test, 0);
-    thread::spawn(thread_test, 1);
-
-    loop {
-        unsafe {
-            riscv::asm::wfi();
-        }
-    }
-}
-
-extern "C" fn thread_test(arg: usize) -> usize {
-    loop {
-        unsafe { print_unsafe!("{}", arg) }
-    }
+    exit!(0);
 }

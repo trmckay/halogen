@@ -3,10 +3,11 @@ use crate::{arch::Context, mem::Stack, prelude::*};
 mod executor;
 mod state;
 
-pub use executor::{handoff, resume, spawn, tid, timer_event, yld};
+pub use executor::{handoff, join, resume, spawn, tid, timer_event, yld};
 
 pub type ThreadFunction = extern "C" fn(usize) -> usize;
 pub type ThreadShim = extern "C" fn(ThreadFunction, usize);
+pub type ThreadId = usize;
 
 
 #[derive(Debug, Copy, Clone)]
@@ -26,6 +27,13 @@ impl Default for ThreadState {
 #[derive(Debug, Copy, Clone)]
 pub enum ThreadType {
     Kernel,
+}
+
+
+#[derive(Debug, Copy, Clone)]
+pub enum ThreadError {
+    NoSuchThread(usize),
+    ThreadAllocation,
 }
 
 /// An execution context in the main kernel address space
@@ -55,7 +63,7 @@ impl Thread {
         entry: extern "C" fn(usize) -> usize,
         arg: usize,
     ) -> Option<Thread> {
-        let stack = Stack::new()?;
+        let stack = Stack::new(16)?;
         let thread = Thread {
             tid,
             typ,

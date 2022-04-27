@@ -2,7 +2,12 @@ use core::{arch, ptr};
 
 use riscv::register;
 
-use crate::{align, irq::plic, mem, mem::paging::pte_flags::*};
+use crate::{
+    align,
+    irq::plic,
+    mem,
+    mem::{paging::pte_flags::*, Allocator, StaticBitmap},
+};
 
 extern "C" {
     pub static KERNEL_SIZE: usize;
@@ -97,19 +102,22 @@ unsafe extern "C" fn boot() -> ! {
 
 /// Get the kernel heap bitmap from its reserved spot
 fn early_frame_alloc_bitmap(
-) -> &'static mut mem::Bitmap<EARLY_ALLOC_NUM_BLOCKS, EARLY_ALLOC_BLOCK_SIZE> {
+) -> &'static mut StaticBitmap<EARLY_ALLOC_NUM_BLOCKS, EARLY_ALLOC_BLOCK_SIZE> {
     unsafe {
         ((KERNEL_START_PHYS + mem::MEMORY_SIZE / 2)
-            as *mut mem::Bitmap<EARLY_ALLOC_NUM_BLOCKS, EARLY_ALLOC_BLOCK_SIZE>)
+            as *mut StaticBitmap<EARLY_ALLOC_NUM_BLOCKS, EARLY_ALLOC_BLOCK_SIZE>)
             .as_mut()
             .expect("Kernel heap is null")
     }
 }
 
 /// Alllocate physical pages from the kernel heap
-pub fn early_frame_alloc() -> Option<*mut u8> {
+pub fn early_frame_alloc() -> Option<usize> {
     let map = early_frame_alloc_bitmap();
-    map.alloc(1)
+    match map.alloc::<[u8; mem::paging::L0_PAGE_SIZE]>(1) {
+        Err(_) => None,
+        Ok(ptr) => Some(ptr as usize),
+    }
 }
 
 /// Initialize a bitmap for pre-paging allocations
@@ -121,7 +129,7 @@ unsafe extern "C" fn early_frame_alloc_init() {
     let bitmap_arena = align!(KERNEL_START_PHYS + KERNEL_SIZE, mem::L0_PAGE_SIZE) as *mut u8;
 
     // Initialize the bitmap
-    *bitmap = mem::Bitmap::new(bitmap_arena);
+    *bitmap = StaticBitmap::new(bitmap_arena);
 }
 
 /// Initialize the root page-table and map the kernel

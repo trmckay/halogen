@@ -3,9 +3,9 @@
     "tasks": [
         {
             "type": "shell",
-            "command": "make -j$(nproc) build/halogen.bin",
+            "command": "make all",
             "problemMatcher": [],
-            "label": "build",
+            "label": "Build",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -13,51 +13,9 @@
         },
         {
             "type": "shell",
-            "command": "make -j$(nproc) build/halogen-test.bin",
-            "problemMatcher": [],
-            "label": "build tests"
-        },
-        {
-            "type": "shell",
             "command": "make clean",
             "problemMatcher": [],
-            "label": "make clean"
+            "label": "Clean"
         },
-        {
-            "label": "GDB server (run)",
-            "type": "shell",
-            "command": "${workspaceFolder}/bin/run.sh",
-            "args": ["-g"],
-            "dependsOn": "build",
-            "isBackground": true,
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": ""
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": " ",
-                    "endsPattern": "."
-                }
-            }
-        },
-        {
-            "label": "GDB server (test)",
-            "type": "shell",
-            "command": "${workspaceFolder}/bin/run.sh",
-            "args": ["-gt"],
-            "dependsOn": "build tests",
-            "isBackground": true,
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": ""
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": " ",
-                    "endsPattern": "."
-                }
-            }
-        }
     ]
 }

@@ -1,3 +1,5 @@
+use super::{Allocator, AllocatorError};
+
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum BlockStatus {
@@ -8,21 +10,28 @@ enum BlockStatus {
 
 /// A physical page bitmap allocator
 ///
-/// Generics:
+/// TODO: It would be nice if the block size and count were provided to the
+/// contructor instead of as generics.
+///
+/// # Generics
+///
 /// * `N`: number of blocks
 /// * `S`: size of each block
 #[repr(C, packed)]
-pub struct Bitmap<const N: usize, const S: usize> {
+pub struct StaticBitmap<const N: usize, const S: usize> {
     map: [BlockStatus; N],
     arena: *mut u8,
 }
 
-unsafe impl<const N: usize, const S: usize> Sync for Bitmap<N, S> {}
-unsafe impl<const N: usize, const S: usize> Send for Bitmap<N, S> {}
+unsafe impl<const N: usize, const S: usize> Sync for StaticBitmap<N, S> {}
+unsafe impl<const N: usize, const S: usize> Send for StaticBitmap<N, S> {}
 
-impl<const N: usize, const S: usize> Bitmap<N, S> {
-    pub fn new(arena: *mut u8) -> Bitmap<N, S> {
-        Bitmap {
+impl<const N: usize, const S: usize> StaticBitmap<N, S> {
+    /// # Safety
+    ///
+    /// * `arena` must be a pointer to `N * S` free bytes
+    pub unsafe fn new(arena: *mut u8) -> StaticBitmap<N, S> {
+        StaticBitmap {
             map: [BlockStatus::Free; N],
             arena,
         }
@@ -35,8 +44,8 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
         self.map[block_num + size - 1] = BlockStatus::Boundary;
     }
 
-    fn to_ptr(&self, block_num: usize) -> *mut u8 {
-        unsafe { (self.arena.add(S * block_num)) as *mut u8 }
+    fn to_ptr<T>(&self, block_num: usize) -> *mut T {
+        unsafe { (self.arena.add(S * block_num)) as *mut T }
     }
 
     pub fn boundary(&self) -> *const u8 {
@@ -48,8 +57,11 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
         }
         unsafe { self.arena.add(S * (last + 1)) }
     }
+}
 
-    pub fn alloc(&mut self, n: usize) -> Option<*mut u8> {
+impl<const N: usize, const S: usize> Allocator for StaticBitmap<N, S> {
+    fn alloc_bytes(&mut self, size: usize) -> Result<*mut u8, AllocatorError> {
+        let block_count = size / S + 1;
         let mut alloc_start = 0;
         let mut found = 0;
 
@@ -60,9 +72,9 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
                         alloc_start = i;
                     }
                     found += 1;
-                    if found == n {
+                    if found == block_count {
                         self.claim(alloc_start, found);
-                        return Some(self.to_ptr(alloc_start));
+                        return Ok(self.to_ptr(alloc_start));
                     }
                 }
                 _ => {
@@ -71,11 +83,11 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
             }
         }
 
-        None
+        Err(AllocatorError::OutOfSpace(size))
     }
 
-    pub fn free(&mut self, ptr: *const u8) {
-        let mut pos = ((ptr as usize) - (self.arena as usize)) / N;
+    unsafe fn free<T>(&mut self, ptr: *mut T) -> Result<(), AllocatorError> {
+        let mut pos = ((ptr as usize) - (self.arena as usize)) / (N * S);
         loop {
             debug_assert_ne!(BlockStatus::Free, self.map[pos]);
             match self.map[pos] {
@@ -85,9 +97,9 @@ impl<const N: usize, const S: usize> Bitmap<N, S> {
                 }
                 BlockStatus::Boundary => {
                     self.map[pos] = BlockStatus::Free;
-                    return;
+                    return Ok(());
                 }
-                _ => return,
+                _ => return Ok(()),
             };
         }
     }

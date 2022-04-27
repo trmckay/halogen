@@ -18,21 +18,21 @@ impl fmt::Display for Level {
             "{}",
             match &self {
                 Level::Trace => "TRACE",
-                Level::Info => "INFO",
-                Level::Warn => "WARN",
+                Level::Info => "INFO ",
+                Level::Warn => "WARN ",
                 Level::Error => "ERROR",
             }
         )
     }
 }
 
-impl From<Level> for Style {
-    fn from(level: Level) -> Style {
+impl From<&Level> for Style {
+    fn from(level: &Level) -> Style {
         match level {
-            Level::Trace => Style::default().weight(Weight::Light),
-            Level::Info => Style::default().color(Color::Cyan),
-            Level::Warn => Style::default().weight(Weight::Bold).color(Color::Yellow),
-            Level::Error => Style::default().weight(Weight::Bold).color(Color::Red),
+            Level::Trace => Style::new().dimmed(),
+            Level::Info => Style::new().cyan(),
+            Level::Warn => Style::new().yellow().bold(),
+            Level::Error => Style::new().red().bold(),
         }
     }
 }
@@ -49,15 +49,22 @@ pub fn set_level(level: Level) {
 macro_rules! _log {
     ($level:expr, $($arg:tt)*) => {
         if $level <= *$crate::log::LOG_LEVEL.lock() {
-            let style: $crate::style::Style = $level.into();
-            print!("{}", style);
-            if $level <= $crate::log::Level::Warn {
-                #[allow(unused_unsafe)]
-                unsafe { $crate::print_unsafe!("[{}] {}", $level, format_args!($($arg)*)) }
-            } else {
-                $crate::print!("[{}] {}", $level, format_args!($($arg)*))
+            let style = Style::from(&$level);
+            #[allow(unused_unsafe)]
+            unsafe {
+                $crate::println_unsafe!(
+                    "{}",
+                    format_args!(
+                        "{:.04} | {:>5} | {}",
+                        (
+                            riscv::register::time::read() as f64 /
+                            ($crate::arch::TIMER_FREQ_HZ as f64 / 1000.0)
+                        ),
+                        $level,
+                        format_args!($($arg)*)
+                    ).style(style)
+                )
             }
-            println!("{}", $crate::style::Style::default());
         }
     };
 }

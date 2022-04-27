@@ -1,6 +1,5 @@
 use crate::{
-    mem,
-    mem::{pte_flags::*, Bitmap},
+    mem::{frame_alloc, frame_free, paging, pte_flags::*, AddressAllocator},
     prelude::*,
 };
 
@@ -9,24 +8,20 @@ pub const STACK_REGION_SIZE: usize = 8 * 1024 * 1024;
 pub const STACK_COUNT: usize = STACK_REGION_SIZE / STACK_SIZE;
 
 lazy_static! {
-    static ref STACK_ALLOCATOR: Mutex<Option<Bitmap<STACK_COUNT, STACK_SIZE>>> = Mutex::new(None);
+    static ref ADDRESS_ALLOCATOR: Mutex<Option<AddressAllocator>> = Mutex::new(None);
 }
 
-/// Initialize the kernel stack region
-///
 /// # Safety
 ///
-/// * `start` must point to the virtual address of the stack region in which
-///   `STACK_REGION_SIZE` addresses are available
-/// * `STACK_SIZE` bytes of physical frames must be available whenever a
-///   `kstack_alloc()` is called
-pub unsafe fn stack_init(start: usize) {
-    *STACK_ALLOCATOR.lock() = Some(Bitmap::new(start as *mut u8));
+/// * Region should be available solely for new stack allocations
+pub unsafe fn stack_init(start: *mut u8, size: usize) {
+    *ADDRESS_ALLOCATOR.lock() = Some(AddressAllocator::new(start as usize, size));
 }
 
 #[derive(Debug, Clone)]
 pub struct Stack {
     base: *mut u8,
+    frames: Vec<usize>,
     size: usize,
 }
 
@@ -35,20 +30,34 @@ unsafe impl Send for Stack {}
 
 impl Stack {
     /// Allocate and map a new stack
-    pub fn new() -> Option<Stack> {
-        let base = STACK_ALLOCATOR.lock().as_mut().and_then(|sa| sa.alloc(1))?;
+    pub fn new(frame_count: usize) -> Option<Stack> {
+        // Get a virtual address range for the new stack
+        let range = ADDRESS_ALLOCATOR
+            .lock()
+            .as_mut()?
+            .alloc_range(frame_count * paging::L0_PAGE_SIZE)?;
 
-        for virt_addr in
-            (base as usize..(base as usize + STACK_SIZE)).step_by(mem::paging::L0_PAGE_SIZE)
-        {
-            let phys_addr =
-                mem::frame_alloc().expect("Failed to allocate physical frame for stack") as usize;
-            unsafe { mem::paging::map(virt_addr, phys_addr, READ | WRITE | VALID) };
-        }
+        trace!("Allocate a new stack: {}", range);
 
+        // Allocate and map physical frames
+        let frames = (0..frame_count)
+            .map(|i| {
+                let phys_addr = frame_alloc().expect("failed to allocate frames for stack");
+                let virt_addr = range.start + (i * paging::L0_PAGE_SIZE);
+
+                unsafe {
+                    paging::map(virt_addr, phys_addr, READ | WRITE | VALID);
+                }
+
+                phys_addr
+            })
+            .collect::<Vec<usize>>();
+
+        // Package it all up
         Some(Stack {
-            base,
-            size: STACK_SIZE,
+            base: range.start as *mut u8,
+            size: frame_count * paging::L0_PAGE_SIZE,
+            frames,
         })
     }
 
@@ -60,11 +69,14 @@ impl Stack {
 
 impl Drop for Stack {
     fn drop(&mut self) {
-        // TODO: Unmap the stack
-        STACK_ALLOCATOR
+        trace!("Drop stack @ {:p}", self.base);
+        ADDRESS_ALLOCATOR
             .lock()
             .as_mut()
-            .expect("stack allocator uninitialized")
-            .free(self.base);
+            .expect("dropped a stack, but the address allocator doesn't exist")
+            .release_range(self.base as usize);
+        self.frames
+            .iter()
+            .for_each(|&frame| unsafe { frame_free(frame) });
     }
 }

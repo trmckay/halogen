@@ -11,17 +11,19 @@ pub enum Environment {
     User = 2,
 }
 
+
+// Some fields are pointers so they are debug-printed with pointer format
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct GpRegisters {
-    ra: usize,
-    sp: usize,
-    gp: usize,
-    tp: usize,
+    ra: *const u8,
+    sp: *const u8,
+    gp: *const u8,
+    tp: *const u8,
     t0: usize,
     t1: usize,
     t2: usize,
-    s0_fp: usize,
+    fp: *const u8,
     s1: usize,
     a0: usize,
     a1: usize,
@@ -47,26 +49,72 @@ pub struct GpRegisters {
     t6: usize,
 }
 
+unsafe impl Sync for GpRegisters {}
+unsafe impl Send for GpRegisters {}
+
+impl Default for GpRegisters {
+    fn default() -> GpRegisters {
+        unsafe {
+            GpRegisters {
+                ra: transmute(0_usize),
+                sp: transmute(0_usize),
+                gp: transmute(0_usize),
+                tp: transmute(0_usize),
+                t0: 0,
+                t1: 0,
+                t2: 0,
+                fp: transmute(0_usize),
+                s1: 0,
+                a0: 0,
+                a1: 0,
+                a2: 0,
+                a3: 0,
+                a4: 0,
+                a5: 0,
+                a6: 0,
+                a7: 0,
+                s2: 0,
+                s3: 0,
+                s4: 0,
+                s5: 0,
+                s6: 0,
+                s7: 0,
+                s8: 0,
+                s9: 0,
+                s10: 0,
+                s11: 0,
+                t3: 0,
+                t4: 0,
+                t5: 0,
+                t6: 0,
+            }
+        }
+    }
+}
+
 /// Stores a CPU state for interrupts/traps, context switches, etc.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Context {
     pub registers: GpRegisters,
-    pub pc: usize,
+    pub pc: *const u8,
     pub env: Environment,
 }
+
+unsafe impl Sync for Context {}
+unsafe impl Send for Context {}
 
 impl Default for Context {
     /// Create a new context from kernel code
     fn default() -> Context {
         let mut ctx = Context {
             registers: GpRegisters::default(),
-            pc: 0,
+            pc: ptr::null(),
             env: Environment::Supervisor,
         };
 
-        ctx.registers.gp = read_reg!(gp);
-        ctx.registers.tp = read_reg!(tp);
+        ctx.registers.gp = read_reg!(gp) as *const _;
+        ctx.registers.tp = read_reg!(tp) as *const _;
 
         ctx
     }
@@ -74,9 +122,9 @@ impl Default for Context {
 
 impl Context {
     pub fn prepare(&mut self, sp: *mut u8, shim: ThreadShim, entry: ThreadFunction, arg: usize) {
-        self.pc = shim as usize;
+        self.pc = shim as *const _;
         self.registers.a0 = entry as usize;
         self.registers.a1 = arg;
-        self.registers.sp = sp as usize;
+        self.registers.sp = sp;
     }
 }

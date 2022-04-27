@@ -1,59 +1,24 @@
 #!/bin/bash
 
-usage="Usage: $0 [-g] [-t] [/path/to/kernel]"
+bin=$(dirname $0)
+usage="usage: $0 firmware.bin kernel.bin kernel.elf"
 
-firmware="$(dirname $0)/../build/opensbi.bin"
-kernel="$(dirname $0)/../build/halogen.bin"
+firmware="$1"
+kernel="$2"
+elf="$3"
 
 qemu="qemu-system-riscv64"
-debug_flags=""
 
-if [[ $# -gt 3 ]]; then
-    echo "$usage"
-    exit 1
+if [[ ! -d "$RISCV_PREFIX" ]]; then
+    RISCV_PREFIX="riscv64-unknown-elf-"
 fi
 
+qemu_cmd="$qemu -machine virt -cpu rv64 -m 512M -smp 1 -nographic -serial mon:stdio -bios $firmware -s -S -kernel $kernel"
+gdb_cmd="rust-gdb -q -ex 'symbol-file $elf' -x $bin/gdbinit"
 
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -*)
-            if [[ "$1" =~ "h" ]]; then
-                echo "$usage"
-                exit 0
-            fi
-            if [[ "$1" =~ "t" ]]; then
-                kernel="build/halogen-test.bin"
-            fi
-            if [[ "$1" =~ "g" ]]; then
-                debug_flags="-s -S"
-            fi
-            shift 1
-            ;;
-        *)
-            kernel="$1"
-            shift 1
-            ;;
-    esac
-done
+echo "$qemu_cmd"
+echo "$gdb_cmd"
 
-if [[ ! -f $kernel ]]; then
-    echo "Kernel '$kernel' does not exist"
-    exit 1
-fi
-if [[ ! -f $firmware ]]; then
-    echo "Firmware '$firmware' does not exist"
-    exit 1
-fi
+$qemu_cmd &
 
-echo -e "Firmware: $firmware"
-echo "Kernel: $kernel"
-
-if [[ "$debug_flags" != "" ]]; then
-    echo "Debug: True"
-else
-    echo "Debug: False"
-fi
-
-cmd="$qemu -machine virt -cpu rv64 -m 512M -smp 1 -nographic -serial mon:stdio -bios $firmware $debug_flags -kernel $kernel"
-echo -e "\n$cmd\n"
-exec $cmd
+RUST_GDB=${RISCV_PREFIX}gdb eval $gdb_cmd

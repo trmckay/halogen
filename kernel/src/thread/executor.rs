@@ -1,7 +1,11 @@
-use super::{Thread, ThreadFunction, ThreadState, ThreadType};
-use crate::{arch::Context, irq, prelude::*, println_unsafe, sbi};
-
-pub const TIMER_FREQ_HZ: usize = 10_000_000;
+use super::{Thread, ThreadError, ThreadFunction, ThreadId, ThreadState, ThreadType};
+use crate::{
+    arch::{Context, TIMER_FREQ_HZ},
+    critical_section, irq,
+    prelude::*,
+    sbi,
+    sched::{JobScheduler, RoundRobinScheduler},
+};
 
 pub const DEFAULT_QUANTA_LIMIT: usize = 4;
 pub const DEFAULT_QUANTUM_US: isize = 250_000;
@@ -12,32 +16,53 @@ lazy_static! {
     static ref EXECUTOR: Mutex<Executor> = Mutex::new(Executor::default());
 }
 
-extern "C" fn test_thread(i: usize) -> usize {
+extern "C" fn thread_shim(entry: ThreadFunction, arg: usize) {
+    let ret = entry(arg);
+
+    trace!("Thread {} finished (ret={})", tid(), ret);
+
+    critical_section! {
+        EXECUTOR.lock().register_return(ret);
+    }
+
+    sbi::set_timer(0).expect("failed to set timer");
+}
+
+/// Add a kernel thread to the executor pool
+pub fn spawn(entry: ThreadFunction, arg: usize) -> Result<usize, ThreadError> {
+    critical_section! {
+        let res = EXECUTOR.lock().spawn(entry, arg);
+        match res {
+            Ok(tid) => trace!("Spawn thread {} @ {:p}", tid, entry),
+            Err(why) => error!("Failed to spawn thread: {:?}", why),
+        }
+        res
+    }
+}
+
+/// Give up remaining quanta
+pub fn yld() {
+    critical_section! {
+        EXECUTOR.lock().yld();
+        sbi::set_timer(0).expect("failed to set timer")
+    };
+}
+
+/// Wait for a thread to complete and return its result
+pub fn join(tid: usize) -> Result<usize, ThreadError> {
     loop {
-        unsafe {
-            println_unsafe!("hello({})", i);
+        let ret = critical_section! {
+            EXECUTOR.lock().reap(tid)
+        };
+
+        match ret {
+            Err(why) => return Err(why),
+            Ok(Some(ret)) => return Ok(ret),
+            _ => yld(),
         }
     }
 }
 
-extern "C" fn thread_shim(entry: ThreadFunction, arg: usize) {
-    let ret = entry(arg);
-
-    {
-        let mut executor = EXECUTOR.lock();
-        let curr = executor.current_mut().expect("executor: not running");
-
-        curr.ret = ret;
-        curr.state = ThreadState::Finished;
-    }
-
-    yld();
-}
-
-/// Add a kernel thread to the executor pool
-pub fn spawn(entry: ThreadFunction, arg: usize) -> Option<usize> {
-    EXECUTOR.lock().spawn(entry, arg)
-}
 
 /// Save the context for the current thread and return the next context
 ///
@@ -45,104 +70,110 @@ pub fn spawn(entry: ThreadFunction, arg: usize) -> Option<usize> {
 ///
 /// * `saved_ctx` must not be null
 /// * `saved_ctx` must point to a valid Context
+/// * This should probably only be called when returning from a trap handler
 pub unsafe fn resume(saved_ctx: *const Context) -> *const Context {
-    EXECUTOR.lock().resume(saved_ctx)
-}
-
-/// Elect to block a thread from kernel code
-pub fn yld() {
-    EXECUTOR.lock().yld();
-    sbi::set_timer(0).expect("executor: failed to set timer");
+    let (_, ctx) = EXECUTOR.lock().resume(saved_ctx);
+    ctx
 }
 
 /// Handoff control to the thread executor
 pub fn handoff(entry: ThreadFunction, arg: usize) -> ! {
-    let tid = spawn(entry, arg).expect("executor: failed to spawn handoff thread");
-
-    EXECUTOR.lock().queue.push_back(tid);
+    trace!("Handing off control to thread executor");
+    spawn(entry, arg).expect("failed to spawn handoff thread");
 
     irq::enable_timer();
-    sbi::set_timer(0).expect("executor: failed to set timer");
+    sbi::set_timer(0).expect("failed to set timer");
 
-    panic!("executor: returned from handoff thread")
+    panic!("returned from executor handoff")
 }
 
 /// Register a timer event
 pub fn timer_event() {
     let mut executor = EXECUTOR.lock();
-    executor.add_quantum();
-    sbi::set_timer(executor.quantum_len).expect("executor: failed to set timer");
+    executor.register_quantum();
+    sbi::set_timer(executor.quantum_len).expect("failed to set timer");
 }
 
 /// Get the ID of the calling thread
 pub fn tid() -> usize {
-    EXECUTOR.lock().current.expect("executor: not running")
+    EXECUTOR
+        .lock()
+        .scheduler
+        .current()
+        .expect("no thread running")
 }
 
 pub struct Executor {
-    current: Option<usize>,
-    tids: usize,
-    threads: BTreeMap<usize, Thread>,
-    queue: VecDeque<usize>,
+    scheduler: Box<dyn JobScheduler<Handle = ThreadId>>,
+    threads: BTreeMap<ThreadId, Thread>,
     quanta_limit: usize,
-    quanta: BTreeMap<usize, usize>,
+    quanta: BTreeMap<ThreadId, usize>,
     quantum_len: isize,
 }
 
 impl Default for Executor {
     fn default() -> Executor {
         Executor {
-            current: None,
-            tids: 1,
             quanta_limit: DEFAULT_QUANTA_LIMIT,
             quantum_len: DEFAULT_QUANTUM_CYCLES,
             threads: BTreeMap::default(),
-            queue: VecDeque::default(),
             quanta: BTreeMap::default(),
+            scheduler: Box::new(RoundRobinScheduler::default()),
         }
     }
 }
 
 impl Executor {
-    fn spawn(&mut self, entry: ThreadFunction, arg: usize) -> Option<usize> {
-        let tid = self.tids;
-        self.tids += 1;
+    fn spawn(&mut self, entry: ThreadFunction, arg: usize) -> Result<usize, ThreadError> {
+        let tid = match self.scheduler.add_new() {
+            Some(tid) => tid,
+            None => return Err(ThreadError::ThreadAllocation),
+        };
 
-        let mut thread = Thread::new(tid, ThreadType::Kernel, entry, arg)?;
+        match Thread::new(tid, ThreadType::Kernel, entry, arg) {
+            Some(mut thread) => {
+                // Prepare the context to enter at the thread shim holding the correct arguments
+                thread
+                    .context
+                    .prepare(thread.stack(), thread_shim, thread.entry, thread.arg);
 
-        // Prepare the context to enter at the thread shim holding the correct arguments
-        thread
-            .context
-            .prepare(thread.stack(), thread_shim, thread.entry, thread.arg);
+                self.threads.insert(tid, thread);
+                self.quanta.insert(tid, 0);
 
-        self.threads.insert(tid, thread);
-        self.quanta.insert(tid, 0);
-        self.queue.push_back(tid);
-
-        Some(tid)
+                Ok(tid)
+            }
+            None => Err(ThreadError::ThreadAllocation),
+        }
     }
 
     fn yld(&mut self) {
-        if let Some(thread) = self.current_mut() {
-            if let ThreadState::Running = thread.state {
-                thread.state = ThreadState::Blocked;
+        if let Some(tid) = self.scheduler.current() {
+            self.scheduler.yld(tid);
+            self.quanta.insert(tid, self.quanta_limit);
+        }
+    }
+
+    /// Clean up a thread and return its value
+    fn reap(&mut self, tid: usize) -> Result<Option<usize>, ThreadError> {
+        match self.threads.get(&tid) {
+            None => Err(ThreadError::NoSuchThread(tid)),
+            Some(thread) => {
+                Ok(match thread.state {
+                    ThreadState::Finished => {
+                        trace!("Reaping thread {}", thread.tid);
+                        let tid = thread.tid;
+                        let ret = Some(thread.ret);
+                        self.threads.remove(&tid);
+                        ret
+                    }
+                    _ => None,
+                })
             }
         }
     }
 
-    fn set_next(&mut self) -> &mut Thread {
-        let next = self.queue.pop_front().expect("executor: no viable threads");
-        self.current = Some(next);
-        let thread = self
-            .threads
-            .get_mut(&next)
-            .expect("executor: thread does not exist");
-        thread.state = ThreadState::Running;
-        thread
-    }
-
-    /// Returns a pointer to the `Context` of the next thread to be run
-    fn resume(&mut self, saved_ctx: *const Context) -> *const Context {
+    /// Returns the ID and a pointer to the `Context` of the next thread
+    fn resume(&mut self, saved_ctx: *const Context) -> (usize, *const Context) {
         match self.current() {
             // Coming from a running thread
             Some(current) => {
@@ -151,9 +182,10 @@ impl Executor {
                 let time_reached = self.time_reached();
 
                 match (state, time_reached) {
-                    (ThreadState::Finished, _) | (ThreadState::Running, true) => {
+                    // Thread is running but out of quanta
+                    (ThreadState::Running, true) => {
+                        // Add the thread to the back of the queue if it's running
                         // Update the current thread
-                        self.queue.push_back(tid);
                         let thread = self.current_mut().unwrap();
                         thread.state = ThreadState::Ready;
                         unsafe {
@@ -161,50 +193,102 @@ impl Executor {
                         }
 
                         // Move to the next thread
-                        self.set_next().context_ptr()
+                        let next = self.update_and_get_next();
+                        trace!("Swap to thread {}", next.tid);
+                        (next.tid, next.context_ptr())
                     }
-                    // Thread still has time left
-                    (ThreadState::Running, false) => saved_ctx,
-                    // Invalid states
-                    (ThreadState::Blocked | ThreadState::Ready, _) => {
-                        panic!("executor: a {:?} thread cannot run", current.state)
+                    // Thread is running and still has time left
+                    (ThreadState::Running, false) => {
+                        trace!("Resuming thread");
+                        (tid, saved_ctx)
+                    }
+                    // Invalid state
+                    (state, _) => {
+                        panic!("{:?} thread cannot run", state)
                     }
                 }
             }
-            // First time polling for next thread
-            None => self.set_next().context_ptr(),
+
+            // First time polling for next thread or a thread just finished
+            None => {
+                let next = self.update_and_get_next();
+                trace!("Swap to thread {}", next.tid);
+                (next.tid, next.context_ptr())
+            }
         }
     }
 
-    fn add_quantum(&mut self) {
-        if let Some(tid) = self.current {
+    /// Returns whether the current thread has reached its quanta limit, false
+    /// if the limit is not reached or no thread is running
+    fn time_reached(&self) -> bool {
+        match self.scheduler.current() {
+            Some(tid) => {
+                *self
+                    .quanta
+                    .get(&tid)
+                    .unwrap_or_else(|| panic!("no quanta for thread {}", tid))
+                    >= self.quanta_limit
+            }
+            None => false,
+        }
+    }
+
+    /// Call once per timer event to increment the current thread's quanta
+    fn register_quantum(&mut self) {
+        if let Some(tid) = self.scheduler.current() {
             *self
                 .quanta
                 .get_mut(&tid)
-                .expect("executor: no quanta for thread") += 1;
+                .unwrap_or_else(|| panic!("no quanta for thread {}", tid)) += 1;
         }
-    }
-
-    fn started(&self) -> bool {
-        self.current.is_some()
     }
 
     /// Returns a reference to the currently running thread
     fn current(&self) -> Option<&Thread> {
-        self.current.and_then(|tid| self.threads.get(&tid))
+        self.scheduler
+            .current()
+            .and_then(|tid| self.threads.get(&tid))
     }
 
     /// Returns a mutable reference to the currently running thread
     fn current_mut(&mut self) -> Option<&mut Thread> {
-        self.current.and_then(move |tid| self.threads.get_mut(&tid))
+        self.scheduler
+            .current()
+            .and_then(move |tid| self.threads.get_mut(&tid))
     }
 
-    /// Returns whether the current thread has reached its quanta limit
-    fn time_reached(&self) -> bool {
-        *self
-            .quanta
-            .get(&self.current().expect("executor: not running").tid)
-            .expect("executor: no quanta for thread")
-            >= self.quanta_limit
+    /// Get the next thread from the scheduler and update its state
+    fn update_and_get_next(&mut self) -> &mut Thread {
+        let next_tid = self
+            .scheduler
+            .next()
+            .expect("scheduler returned no next thread");
+
+        let thread = self
+            .threads
+            .get_mut(&next_tid)
+            .unwrap_or_else(|| panic!("no such thread {}", next_tid));
+
+        thread.state = ThreadState::Running;
+        thread
+    }
+
+    /// Register a thread as having returned and save its return value; keep it
+    /// around until it is joined and reaped
+    fn register_return(&mut self, ret: usize) {
+        let curr_tid = self
+            .scheduler
+            .current()
+            .expect("scheduler returned no current thread");
+
+        self.scheduler.complete(curr_tid);
+
+        let curr = self
+            .threads
+            .get_mut(&curr_tid)
+            .unwrap_or_else(|| panic!("no such thread {}", curr_tid));
+
+        curr.ret = ret;
+        curr.state = ThreadState::Finished;
     }
 }

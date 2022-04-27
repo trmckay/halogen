@@ -26,7 +26,7 @@ FIRMWARE_ELF = opensbi/build/platform/generic/firmware/fw_jump.elf
 FIRMWARE = $(BUILD_DIR)/opensbi.bin
 
 .PHONY: all
-all: $(KERNEL_BIN) $(FIRMWARE) $(KERNEL_DUMP)
+all: $(KERNEL_BIN) $(FIRMWARE) $(KERNEL_DUMP) $(KERNEL_TEST_BIN) $(KERNEL_TEST_DUMP)
 
 %.dump: %.elf
 	$(CROSS_COMPILE)objdump -S $^ > $@
@@ -36,33 +36,19 @@ all: $(KERNEL_BIN) $(FIRMWARE) $(KERNEL_DUMP)
 	$(CROSS_COMPILE)objcopy -O binary $< $@
 
 $(KERNEL_ELF): $(RUST_SOURCE)
-	cd $(CARGO_PROJ) && cargo $(CARGO_FLAGS) build
+	cd $(CARGO_PROJ) && cargo build
 	mkdir -p $(BUILD_DIR)
 	cp $(KERNEL_BUILD) $@
 
 $(KERNEL_TEST_ELF): $(RUST_SOURCE)
-	cp $$( \
-		cd $(CARGO_PROJ) && \
-		cargo test --no-run --message-format=json | \
-		jq 'select(.reason=="compiler-artifact")' | \
-		jq 'select(.executable!=null)' | \
-		jq -r '.executable' \
-	) $@ 2> /dev/null || ( \
-		cd $(CARGO_PROJ) && \
-		cargo test --no-run \
-	)
+	cp $$(cd $(CARGO_PROJ) && cargo test --no-run --message-format=json | jq 'select(.reason=="compiler-artifact")' | jq 'select(.executable!=null)' | jq -r '.executable') $@ 2> /dev/null || (cd $(CARGO_PROJ) && cargo test --no-run )
 
 
 $(SBI)/Makefile:
 	git submodule update --init --recursive --remote
 
 $(FIRMWARE_BUILD): $(SBI)/Makefile $(KERNEL_BIN)
-	$(MAKE) \
-		CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=$(PLATFORM) \
-		FW_PIC=no \
-		FW_KERNEL_BIN_PATH=../$(KERNEL_BIN) \
-		-C $(SBI)
+	$(MAKE) CROSS_COMPILE=$(CROSS_COMPILE) PLATFORM=$(PLATFORM) FW_PIC=no FW_KERNEL_BIN_PATH=../$(KERNEL_BIN) -C $(SBI)
 
 $(FIRMWARE): $(FIRMWARE_BUILD)
 	mkdir -p $(BUILD_DIR)
@@ -74,28 +60,12 @@ $(KERNEL_DUMP): $(KERNEL_ELF)
 $(KERNEL_TEST_DUMP): $(KERNEL_TEST_ELF)
 
 .PHONY: run
-run: $(KERNEL_BIN) $(FIRMWARE)
-	bin/run.sh $<
-
-.PHONY: run-debug
-run-debug: $(KERNEL_BIN) $(FIRMWARE)
-	bin/run.sh -g
-
-.PHONY: run-attach
-run-attach: $(KERNEL_ELF)
-	bin/attach.sh $<
+run: $(FIRMWARE) $(KERNEL_BIN) $(KERNEL_ELF)
+	bin/run.sh $(FIRMWARE) $(KERNEL_BIN) $(KERNEL_ELF)
 
 .PHONY: test
-test: $(KERNEL_TEST_BIN) $(FIRMWARE)
-	bin/run.sh $<
-
-.PHONY: test-debug
-test-debug: $(KERNEL_TEST_BIN) $(FIRMWARE)
-	bin/run.sh -g $<
-
-.PHONY: test-attach
-test-attach: $(KERNEL_TEST_ELF)
-	bin/attach.sh $<
+test: $(FIRMWARE) $(KERNEL_TEST_BIN) $(KERNEL_TEST_ELF)
+	bin/run.sh $(FIRMWARE) $(KERNEL_TEST_BIN) $(KERNEL_TEST_ELF)
 
 .PHONY: doc
 doc:

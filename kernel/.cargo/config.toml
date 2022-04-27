@@ -3,4 +3,4 @@ target = "riscv64gc-unknown-none-elf"
 
 [target.riscv64gc-unknown-none-elf]
 rustflags = ["-Clink-arg=-Tkernel/lds/virt.lds"]
-runner = "echo ELF must be dumped to a flat binary and run in QEMU:"
+runner = "echo run with bin/run.sh"

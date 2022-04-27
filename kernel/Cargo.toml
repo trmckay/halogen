@@ -4,14 +4,10 @@ version = "0.1.0"
 authors = ["Trevor McKay <tm@trmckay.com>"]
 edition = "2018"
 
-[features]
-tests = []
-
 [dependencies]
 halogen-derive = { path = "../derive" }
 qemu-exit = "3.0.1"
 spin = "0.9.2"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 riscv = "0.7.0"
-crossbeam = { version = "0.8", default-features = false, features = ["alloc"] }
-futures-util = {version = "0.3.21", default-features = false, features = ["alloc"] }
+owo-colors = "3.4.0"

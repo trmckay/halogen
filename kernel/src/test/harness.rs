@@ -10,11 +10,11 @@ where
 {
     fn run(&self) {
         println!("---");
-        info!("Running test {}", core::any::type_name::<T>());
+        println!("Running test {}", core::any::type_name::<T>());
 
         self();
 
-        info!("Test complete");
+        println!("Test complete");
     }
 }
 
@@ -26,11 +26,7 @@ pub fn run_tests(tests: &[&dyn TestCase]) -> ! {
         test.run();
     }
 
-    println!(
-        "---{}\n\nAll tests passed{}",
-        Style::default().color(Color::Green),
-        Style::default()
-    );
+    println!("---\n\nAll tests passed");
 
     exit!(0);
 }

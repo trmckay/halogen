@@ -2,14 +2,22 @@ pub mod heap;
 pub mod paging;
 pub mod stack;
 
-mod bitmap;
-mod frame_alloc;
+mod alloc;
+mod range;
 
-pub use bitmap::Bitmap;
-pub use frame_alloc::{frame_alloc, frame_alloc_init};
+pub use alloc::{
+    addr::AddressAllocator,
+    bitmap::StaticBitmap,
+    frame::{frame_alloc, frame_alloc_init, frame_free},
+    free_list::FreeListAllocator,
+    Allocator, AllocatorError,
+};
+
 pub use heap::{heap_alloc_init, kfree, kmalloc};
 pub use paging::*;
+pub use range::AddressRange;
 pub use stack::{stack_init, Stack, STACK_SIZE};
+
 
 /// The size of physical memory available to the kernel
 ///

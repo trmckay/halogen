@@ -6,7 +6,7 @@ use crate::{mem::Stack, prelude::*};
 /// Allocate memory for the trap handler
 pub fn setup() {
     // Allocate a stack for the interrupt vector
-    let trap_stack = Stack::new().expect("irq: could not allocate stack for trap handler");
+    let trap_stack = Stack::new(16).expect("irq: could not allocate stack for trap handler");
     register::sscratch::write(trap_stack.top() as usize);
 
     // Don't run the destructor

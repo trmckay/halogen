@@ -1,6 +1,6 @@
 # Halogen
 
-[![Build Status](https://drone.trmckay.com/api/badges/tm/halogen/status.svg)](https://drone.trmckay.com/tm/halogen)
+[![Build status](https://drone.trmckay.com/api/badges/tm/halogen/status.svg)](https://drone.trmckay.com/tm/halogen)
 
 A simple OS kernel for RISC-V made with Rust.
 
@@ -10,22 +10,7 @@ A simple OS kernel for RISC-V made with Rust.
 - `riscv64-unknown-elf-gdb`
 - `qemu-system-riscv64`
 
-To setup the repository, run `make init` and respond to the prompts.
+## Related
 
-## Usage
-
-Run `make run` or `make test`.
-
-Run `make run-debug` or `make test-debug` to launch a GDB server for that task. Attach to the
-server with `make attach` in another terminal.
-
-Alternatively, open the repository with VS Code and use the provided `launch.json` and `tasks.json`.
-
-## External resources
-
-- [Documentation](https://static.trmckay.com/halogen/rustdoc/halogen)
-- [rustup](https://rustup.rs)
-- [riscv-gnu-toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain)
 - [docker-rust-riscv64](https://git.trmckay.com/tm/docker-rust-riscv64)
-- [Drone](https://drone.io)
-- [pre-commit](https://pre-commit.com)
+- [riscv-dev-ansible](https://git.trmckay.com/tm/riscv-dev-ansible)

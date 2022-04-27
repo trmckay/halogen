@@ -202,9 +202,10 @@ unsafe extern "C" fn trap_handler(
         TrapCause::SupervisorExternal => plic::handle_pending(),
         TrapCause::SupervisorTimer => thread::timer_event(),
         _ => {
+            // TODO: Don't just panic; kill the current thread if it isn't TID=0
             panic!(
-                "unandled exception: cause={:?}, sepc=0x{:x}, stval=0x{:x}",
-                scause, sepc, stval
+                "unandled exception: cause={:?}, sepc=0x{:x}, stval=0x{:x}, ctx={:?}",
+                scause, sepc, stval, *ctx
             )
         }
     }

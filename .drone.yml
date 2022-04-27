@@ -33,7 +33,7 @@ steps:
     - name: test
       image: trmckay/rust-riscv64
       commands:
-          - make test
+          - echo "c" | make test
       when:
           ref:
               - refs/heads/main
