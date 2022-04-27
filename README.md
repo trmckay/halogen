@@ -6,9 +6,10 @@ A simple OS kernel for RISC-V made with Rust.
 
 ## Dev requirements
 
-- `rustup`
-- `riscv64-unknown-elf-gdb`
-- `qemu-system-riscv64`
+- [`rustup`](https://rustup.rs) or Rust with `riscv64gc-unknown-none-elf` target
+- [`riscv64-unknown-elf-` toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain)
+- [`qemu-system-riscv64`](https://www.qemu.org)
+- [`jq`](https://stedolan.github.io/jq)
 
 ## Related
 
