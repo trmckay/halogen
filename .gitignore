@@ -3,3 +3,7 @@
 .halogen-kernel.tmp
 .vim
 build
+*.elf
+*.o
+**/compile_commands.json
+.DS_Store

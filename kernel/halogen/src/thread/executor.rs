@@ -1,4 +1,4 @@
-use super::{Thread, ThreadError, ThreadFunction, ThreadId, ThreadState, ThreadType};
+use super::{Thread, ThreadError, ThreadFunction, ThreadId, ThreadState};
 use crate::{
     arch::{Context, TIMER_FREQ_HZ},
     critical_section, irq,
@@ -130,7 +130,7 @@ impl Executor {
             None => return Err(ThreadError::ThreadAllocation),
         };
 
-        match Thread::new(tid, ThreadType::Kernel, entry, arg) {
+        match Thread::new_kernel(tid, entry, arg) {
             Some(mut thread) => {
                 // Prepare the context to enter at the thread shim holding the correct arguments
                 thread

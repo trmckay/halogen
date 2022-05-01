@@ -1,6 +1,6 @@
 mod context;
 
-pub use context::Context;
+pub use context::{Context, Privilege};
 
 pub const TIMER_FREQ_HZ: usize = 10_000_000;
 

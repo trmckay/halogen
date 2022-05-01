@@ -5,7 +5,7 @@ use crate::{
 
 #[repr(usize)] // `usize` to simplify alignment
 #[derive(Clone, Copy, Debug)]
-pub enum Environment {
+pub enum Privilege {
     Machine = 0,
     Supervisor = 1,
     User = 2,
@@ -98,7 +98,7 @@ impl Default for GpRegisters {
 pub struct Context {
     pub registers: GpRegisters,
     pub pc: *const u8,
-    pub env: Environment,
+    pub prv: Privilege,
 }
 
 unsafe impl Sync for Context {}
@@ -110,7 +110,7 @@ impl Default for Context {
         let mut ctx = Context {
             registers: GpRegisters::default(),
             pc: ptr::null(),
-            env: Environment::Supervisor,
+            prv: Privilege::Supervisor,
         };
 
         ctx.registers.gp = read_reg!(gp) as *const _;

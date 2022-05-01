@@ -1,2 +1,2 @@
-[build]
-target = "riscv64gc-unknown-none-elf"
+[alias]
+xtask = "run --manifest-path ./xtask/Cargo.toml --"

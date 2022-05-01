@@ -1,4 +1,8 @@
-use crate::{arch::Context, mem::Stack, prelude::*};
+use crate::{
+    arch::{Context, Privilege},
+    mem::Stack,
+    prelude::*,
+};
 
 mod executor;
 mod state;
@@ -8,7 +12,6 @@ pub use executor::{handoff, join, resume, spawn, tid, timer_event, yld};
 pub type ThreadFunction = extern "C" fn(usize) -> usize;
 pub type ThreadShim = extern "C" fn(ThreadFunction, usize);
 pub type ThreadId = usize;
-
 
 #[derive(Debug, Copy, Clone)]
 pub enum ThreadState {
@@ -23,12 +26,6 @@ impl Default for ThreadState {
         ThreadState::Ready
     }
 }
-
-#[derive(Debug, Copy, Clone)]
-pub enum ThreadType {
-    Kernel,
-}
-
 
 #[derive(Debug, Copy, Clone)]
 pub enum ThreadError {
@@ -46,8 +43,9 @@ pub enum ThreadError {
 /// The return value is an exit code
 #[derive(Debug, Clone)]
 pub struct Thread {
+    pub pid: Option<usize>,
     pub tid: usize,
-    pub typ: ThreadType,
+    pub prv: Privilege,
     pub context: Context,
     pub entry: extern "C" fn(usize) -> usize,
     pub arg: usize,
@@ -57,16 +55,16 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub fn new(
+    pub fn new_kernel(
         tid: usize,
-        typ: ThreadType,
         entry: extern "C" fn(usize) -> usize,
         arg: usize,
     ) -> Option<Thread> {
         let stack = Stack::new(16)?;
         let thread = Thread {
+            pid: None,
             tid,
-            typ,
+            prv: Privilege::Supervisor,
             entry,
             arg,
             stack,

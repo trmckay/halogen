@@ -1,40 +1,20 @@
----
 kind: pipeline
-name: style
+name: check
 type: docker
 
 steps:
-    - name: check style
+    - name: submodules
+      image: alpine/git
+      commands:
+          - git submodule update --init --recursive
+
+    - name: check
       image: trmckay/rust-riscv64
       commands:
-          - cargo fmt --check
-      when:
-          event:
-              - pull_request
-              - push
-
----
-kind: pipeline
-name: build
-type: docker
-
-steps:
-    - name: build
-      image: trmckay/rust-riscv64
-      commands:
-          - make build/opensbi.bin
-          - make build/halogen.bin
-          - make build/halogen-test.bin
-      when:
-          ref:
-              - refs/heads/main
-              - refs/pull/*/head
+          - cargo xtask check
+          - cargo xtask build
 
     - name: test
       image: trmckay/rust-riscv64
       commands:
-          - echo "c" | make test
-      when:
-          ref:
-              - refs/heads/main
-              - refs/pull/*/head
+          - cargo xtask test
