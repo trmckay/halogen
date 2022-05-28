@@ -3,6 +3,7 @@ use super::call::sbi_ecall;
 const CONSOLE_PUTCHAR_EXT_ID: usize = 0x01;
 const CONSOLE_GETCHAR_EXT_ID: usize = 0x02;
 
+/// Zero-size structure that implements `Write` using SBI calls.
 pub struct SbiConsole;
 
 impl core::fmt::Write for SbiConsole {

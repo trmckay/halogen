@@ -17,21 +17,24 @@ use crate::{
 const START_SIZE: usize = 32 * MIB;
 const MIN_ALLOC: usize = 64;
 
-/// All this really does is wrap a generic allocator with some logic to map
-/// physical frames and deal with the fact that *the* global allocator must be a
-/// static
+/// The heap allocates space for dynamic data structures using a linked-list
+/// allocator. This is a thin wrapper around the `FreeListAllocator` intended to
+/// act the `GlobalAlloc` for the `alloc` crate.
 #[derive(Debug)]
 struct HeapAllocator {
     allocator: Mutex<Option<FreeListAllocator<'static, MIN_ALLOC>>>,
 }
 
 impl HeapAllocator {
+    /// Create a new heap with no memory to manage yet.
     const fn new_uninit() -> HeapAllocator {
         HeapAllocator {
             allocator: Mutex::new(None),
         }
     }
 
+    /// Initialize the heap with a virtual segment to allocate from. Initially,
+    /// back `init_size` bytes with physical frames.
     unsafe fn init(&mut self, segment: Segment<VirtualAddress>, init_size: usize) {
         assert!(init_size <= segment.size());
         map(Some(segment.start), None, init_size, Permissions::ReadWrite).unwrap();
@@ -80,10 +83,12 @@ fn alloc_error(layout: Layout) -> ! {
     }
 }
 
+/// Get usage stats for the heap.
 pub fn stats() -> Option<AllocatorStats> {
     unsafe { Some(GLOBAL_ALLOCATOR.allocator.lock().as_mut()?.stats()) }
 }
 
+/// Print the state of the heap to the console.
 pub fn dump() {
     unsafe {
         if let Some(allocator) = GLOBAL_ALLOCATOR.allocator.lock().as_ref() {
@@ -92,11 +97,11 @@ pub fn dump() {
     }
 }
 
-/// Initialize the heap allocator
+/// Initialize the heap allocator.
 ///
 /// # Safety
 ///
-/// * Not idempotent
+/// - Not idempotent.
 pub unsafe fn init() {
     GLOBAL_ALLOCATOR.init(*HEAP, START_SIZE)
 }

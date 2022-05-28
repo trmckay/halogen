@@ -1,8 +1,9 @@
 use crate::log::*;
 
+/// Interface with a PLIC device that implements the RISC-V PLIC spec.
 pub mod plic;
 
-/// Enable external interrupts
+/// Enable supervisor external interrupts.
 pub fn enable_external() {
     info!("Enable external interrupts");
     plic::set_threshold(0);
@@ -11,7 +12,7 @@ pub fn enable_external() {
     }
 }
 
-/// Enable timer interrupts
+/// Enable timer interrupts.
 #[inline]
 pub fn enable_timer() {
     unsafe {
@@ -19,7 +20,7 @@ pub fn enable_timer() {
     }
 }
 
-/// Disable all interrupts
+/// Disable all interrupts.
 #[inline]
 pub fn disable() {
     unsafe {
@@ -27,7 +28,7 @@ pub fn disable() {
     }
 }
 
-/// Disable all interrupts
+/// Enable all interrupts.
 #[inline]
 pub fn enable() {
     unsafe {

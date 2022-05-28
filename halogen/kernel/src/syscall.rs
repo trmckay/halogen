@@ -1,4 +1,4 @@
-use crate::{error::KernelError, log::*, task};
+use crate::{error::KernelError, kerror, log::*, task};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Function {
@@ -31,7 +31,7 @@ pub unsafe extern "C" fn handle_syscall(
     let func = Function::from(id);
     match match func {
         Function::Yield => syscall_yld(),
-        Function::Invalid => Err(KernelError::InvalidSysCall),
+        Function::Invalid => kerror!(KernelError::InvalidSysCall).into(),
     } {
         Ok(Some(val)) => val,
         Ok(None) => 0,

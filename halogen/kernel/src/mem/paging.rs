@@ -1,3 +1,9 @@
+//! This module implements paging and memory mapping for Sv39. The main
+//! interface is the `map()` function, which provides the ability to allocate
+//! virtual memory, back virtual regions with physical frames, or map
+//! physical regions into virtual space. The exact function depends on which, if
+//! any, addresses are provided.
+
 use halogen_common::{
     align_up, mask_range,
     mem::{Address, PhysicalAddress, VirtualAddress, GIB, KIB, MIB},
@@ -7,19 +13,21 @@ use spin::Mutex;
 use super::{phys, regions::virtual_offset};
 use crate::{error::KernelError, log::*, mem::virt_alloc::virt_addr_alloc};
 
+/// Sv39 requires satp.mode = 8.
 pub const SATP_MODE: usize = 8;
 
+/// Address-space ID for the kernel space.
 pub const KERNEL_ASID: usize = 0;
 
-/// Level 0 page = 4K
+/// Level 0 page = 4K.
 pub const PAGE_SIZE: usize = 4 * KIB;
 pub const PAGE_MASK: usize = usize::MAX & !(PAGE_SIZE - 1);
 
-/// Level 1 page = 2M
+/// Level 1 page = 2M.
 pub const MEGAPAGE_SIZE: usize = 2 * MIB;
 pub const MEGAPAGE_MASK: usize = usize::MAX & !(MEGAPAGE_SIZE - 1);
 
-/// Level 2 page = 1G
+/// Level 2 page = 1G.
 pub const GIGAPAGE_SIZE: usize = GIB;
 pub const GIGAPAGE_MASK: usize = usize::MAX & !(GIGAPAGE_SIZE - 1);
 
@@ -28,26 +36,35 @@ const PT_LENGTH: usize = 512;
 
 const FIELD_VPN: usize = 0x1FF;
 
-/// True if paging is fully set up
-///
-/// Some language features rely on position-dependent code; practically, this
-/// means no mutexs or trait objects
+/// Some language features rely on position-dependent code. In practice, this
+/// means nothing that uses or calls something that uses dynamic-dispatch. For
+/// this kernel, `Mutex` and `print!` are the most notable cases. This flag
+/// determines if those features can be used.
 pub static mut PAGING_ENABLED: bool = false;
 
 static ROOT_PAGE_TABLE_MUTEX: Mutex<()> = Mutex::new(());
 static mut ROOT_PAGE_TABLE: PageTable = PageTable([PageTableEntry(0); PT_LENGTH]);
 
 mod flags {
+    /// A global mapping is used in all address-spaces.
     pub const GLOBAL: usize = 0b0010_0000;
+    /// Available from user mode.
     pub const USER: usize = 0b0001_0000;
+    /// Can be fetched/executed.
     pub const EXECUTE: usize = 0b0000_1000;
+    /// Can be written to.
     pub const WRITE: usize = 0b0000_0100;
+    /// Can be read from (and executed if MXR is set).
     pub const READ: usize = 0b0000_0010;
+    /// The mapping is valid and will be dereferenced by the MMU.
     pub const VALID: usize = 0b0000_0001;
+    /// For use by the kernel.
     pub const DIRTY: usize = 0b1000_0000;
+    /// For use by the kernel.
     pub const ACCESSED: usize = 0b0100_0000;
 }
 
+/// Calculate the satp register based of the mode, ASID, and root page-table.
 #[inline]
 pub fn root_satp() -> usize {
     unsafe {
@@ -57,6 +74,8 @@ pub fn root_satp() -> usize {
     }
 }
 
+/// Types of address translation. A translation is either another level of
+/// page-tables, or a leaf physical address.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Translation {
     Directory,
@@ -72,6 +91,7 @@ impl From<Translation> for usize {
     }
 }
 
+/// Valid flag combinations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Permissions {
     ReadOnly,
@@ -106,6 +126,7 @@ impl From<usize> for Permissions {
     }
 }
 
+/// Mapping levels of Sv39. Gigapage = 1 GiB, MegaPage = 2 MiB, Page = 4 KiB.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Level {
     GigaPage,
@@ -114,6 +135,7 @@ pub enum Level {
 }
 
 impl Level {
+    /// Return the next level down, if any.
     pub fn next(&self) -> Option<Level> {
         match &self {
             Level::GigaPage => Some(Level::MegaPage),
@@ -133,7 +155,7 @@ impl From<Level> for usize {
     }
 }
 
-/// Extract the physical page numbers from a physical address
+/// Extract the physical page numbers from a physical address.
 #[inline]
 fn ppn(virt_addr: VirtualAddress, level: Level) -> usize {
     let virt_addr: usize = virt_addr.into();
@@ -144,14 +166,14 @@ fn ppn(virt_addr: VirtualAddress, level: Level) -> usize {
     }
 }
 
-/// Extract the offset bits from a physical address
+/// Extract the offset bits from a physical address.
 #[inline]
 fn offset(phys_addr: PhysicalAddress) -> usize {
     let phys_addr: usize = phys_addr.into();
     phys_addr & mask_range!(12, 0)
 }
 
-/// Extract the level-based offset as a mask to add to the address
+/// Extract the level-based offset as a mask to add to the address.
 #[inline]
 fn offset_mask(virt_addr: VirtualAddress, level: Level) -> usize {
     let virt_addr: usize = virt_addr.into();
@@ -162,7 +184,7 @@ fn offset_mask(virt_addr: VirtualAddress, level: Level) -> usize {
     }
 }
 
-/// Extract the VPN from a virtual address
+/// Extract the VPN from a virtual address.
 #[inline]
 fn vpn(virt_addr: VirtualAddress, level: Level) -> usize {
     let virt_addr: usize = virt_addr.into();
@@ -173,42 +195,42 @@ fn vpn(virt_addr: VirtualAddress, level: Level) -> usize {
     }
 }
 
-/// A 64-bit Sv39 page-table entry
-///
-/// Points to the next-level page-table or a physical address
+/// A 64-bit Sv39 page-table entry. Points to the next-level page-table or a
+/// physical address.
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PageTableEntry(usize);
 
 impl PageTableEntry {
+    /// Return the flag bits of an entry.
     fn flags(&self) -> usize {
         self.0 & 0xFF
     }
 
-    /// Set the flags of a page-table entry
+    /// Set the flags of an entry.
     fn set_flags(&mut self, flags: usize) {
         debug_assert!(flags <= 0xFF);
         self.0 = (self.0 & !0xFF) | (flags & 0xFF);
     }
 
-    /// Set the physical address of a leaf PTE
+    /// Set the physical address of a leaf.
     fn set_translation(&mut self, phys_addr: PhysicalAddress, meta: Translation) {
         let flags = usize::from(meta) | flags::VALID;
         self.0 = (usize::from(phys_addr) >> 2) | (flags & 0xFF);
     }
 
-    /// Returns true if the entry is valid
+    /// Returns true if the entry is valid.
     fn is_valid(&self) -> bool {
         self.0 & flags::VALID != 0
     }
 
-    /// Returns true if the entry is a leaf
+    /// Returns true if the entry is a leaf.
     fn is_leaf(&self) -> bool {
         self.0 & (flags::READ | flags::WRITE | flags::EXECUTE) != 0
     }
 
     /// Extract the physical page numbers from a PTE as a mask to
-    /// combine w/ the VPN portion of the translated address
+    /// combine w/ the VPN portion of the translated address.
     fn page_number(&self, level: Level) -> usize {
         (match level {
             Level::GigaPage => self.0 & mask_range!(53, 28),
@@ -217,7 +239,7 @@ impl PageTableEntry {
         } << 2) as usize
     }
 
-    /// Get a reference to the next level page-table
+    /// Get a reference to the next level page-table.
     fn next_level(&self) -> Option<&'static mut PageTable> {
         unsafe {
             (((self.0 & mask_range!(53, 10)) << 2).wrapping_add(if PAGING_ENABLED {
@@ -230,13 +252,13 @@ impl PageTableEntry {
     }
 }
 
-/// 512 PTE x 64-bit page-table
+/// 512 PTE x 64-bit page-table.
 #[derive(Debug)]
 #[repr(C, align(4096))]
 pub struct PageTable([PageTableEntry; PT_LENGTH]);
 
 impl PageTable {
-    /// Set all the entries to invalid
+    /// Set all the entries to invalid.
     pub fn clear(&mut self) {
         for entry in self.0.iter_mut() {
             *entry = PageTableEntry(0);
@@ -244,7 +266,7 @@ impl PageTable {
     }
 
     /// Allocate a physical page on the kernel heap and clear it for use as
-    /// a page-table
+    /// a page-table.
     pub fn new() -> Option<(&'static mut PageTable, PhysicalAddress)> {
         unsafe {
             let (virt_addr, phys_addr) = phys::alloc()?;
@@ -259,7 +281,7 @@ impl PageTable {
         }
     }
 
-    /// Get the `n`th entry in the page-table
+    /// Get the `n`th entry in the page-table.
     pub fn get(&self, n: usize) -> &'static mut PageTableEntry {
         unsafe {
             (core::ptr::addr_of!(self.0[n]) as *mut PageTableEntry)
@@ -268,7 +290,7 @@ impl PageTable {
         }
     }
 
-    /// Get or create the next level page table
+    /// Get or create the next level page table.
     pub fn next_level_table(&self, n: usize) -> Option<&'static mut PageTable> {
         let entry = self.get(n);
         if !entry.is_valid() {
@@ -284,7 +306,7 @@ impl PageTable {
         }
     }
 
-    /// Map a virtual address to a physical address
+    /// Map a virtual address to a physical address.
     pub fn map(
         &mut self,
         virt_addr: VirtualAddress,
@@ -303,7 +325,7 @@ impl PageTable {
                     // We can, so get the next level PT
                     pt = match pt.next_level_table(vpn(virt_addr, curr_level)) {
                         Some(pt) => pt,
-                        None => return Err(KernelError::PageTableAllocation),
+                        None => return Err(KernelError::PageTableAllocation(None)),
                     };
 
                     curr_level = next_level
@@ -320,7 +342,7 @@ impl PageTable {
         }
     }
 
-    /// Translate a virtual address to its physical address
+    /// Translate a virtual address to its physical address + permissions.
     pub fn translate(&self, virt_addr: VirtualAddress) -> Option<(PhysicalAddress, Permissions)> {
         let mut pt = self;
         let mut level = Level::GigaPage;
@@ -342,12 +364,12 @@ impl PageTable {
         }
     }
 
-    /// Free a table, but do not free any sub-tables
+    /// Free a table, but do not free any sub-tables.
     ///
     /// # Safety
     ///
-    /// * If sub-tables are only referred to by this table, they will be leaked
-    /// * Assumes that the frame allocator uses physical addresses
+    /// - If sub-tables are only referred to by this table, they will be leaked.
+    /// - Assumes that the frame allocator uses physical addresses.
     pub unsafe fn free(&mut self) {
         let (phys_addr, _) = self
             .translate(VirtualAddress(core::ptr::addr_of!(self) as usize))
@@ -356,11 +378,11 @@ impl PageTable {
         phys::free(phys_addr)
     }
 
-    /// Recursively free a page-table and all of its sub-tables
+    /// Recursively free a page-table and all of its sub-tables.
     ///
     /// # Safety
     ///
-    /// * If other page tables refer to this one, freeing can cause page-faults
+    /// * If other page tables refer to this one, freeing can cause page-faults.
     pub unsafe fn recursive_free(&mut self) {
         self.0.iter_mut().for_each(|e| {
             if e.is_valid() && !e.is_leaf() {
@@ -384,8 +406,8 @@ impl PageTable {
 ///
 /// # Safety
 ///
-/// * This can be very destructive if invalid virtual and/or physical addresses
-///   are provided
+/// - This can be very destructive if invalid virtual and/or physical addresses
+///   are provided.
 pub unsafe fn map(
     virt_base: Option<VirtualAddress>,
     phys_base: Option<PhysicalAddress>,
@@ -399,7 +421,7 @@ pub unsafe fn map(
         None => {
             match virt_addr_alloc(PAGE_SIZE) {
                 Ok(virt_addr) => virt_addr,
-                Err(_) => return Err(KernelError::OutOfVirtualAddresses),
+                Err(_) => return Err(KernelError::OutOfVirtualAddresses(None)),
             }
         }
     };
@@ -411,7 +433,7 @@ pub unsafe fn map(
             None => {
                 match phys::alloc() {
                     Some((_, phys_frame)) => phys_frame,
-                    None => return Err(KernelError::OutOfPhysicalFrames),
+                    None => return Err(KernelError::OutOfPhysicalFrames(None)),
                 }
             }
         };
@@ -430,16 +452,17 @@ pub unsafe fn map(
     Ok(virt_base)
 }
 
-/// Unmap a virtual address
+/// Unmap a virtual address.
 ///
 /// # Safety
 ///
-/// * Unmapped memory must be unused
+/// - Unmapped memory must be unused.
 pub unsafe fn unmap(virt_addr: VirtualAddress) -> Result<(), KernelError> {
     trace!("Unmap {}", virt_addr);
     todo!()
 }
 
+/// Translate a virtual address to its physical address + permissions.
 fn translate(virt_addr: VirtualAddress) -> Option<(PhysicalAddress, Permissions)> {
     unsafe {
         let _lock;

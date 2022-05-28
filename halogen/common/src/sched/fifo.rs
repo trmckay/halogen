@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 
 use super::TaskScheduler;
 
+/// First-in-first-out task scheduler. Jobs are referred to by ID.
 #[derive(Default, Clone)]
 pub struct FifoScheduler {
     queue: VecDeque<usize>,

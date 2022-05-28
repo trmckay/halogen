@@ -1,6 +1,8 @@
+/// Virtual and physical address types.
 mod addr;
 pub use addr::*;
 
+/// Data structures to perform memory-allocation.
 pub mod alloc;
 
 pub const WORD: usize = 4;

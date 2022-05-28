@@ -8,6 +8,7 @@ const SHUTDOWN: usize = 0;
 const COLD_REBOOT: usize = 1;
 const WARM_REBOOT: usize = 2;
 
+/// Exit statuses.
 pub enum Reason {
     None,
     Failure,
@@ -22,14 +23,9 @@ impl From<Reason> for usize {
     }
 }
 
-/// Shutdown the platform
-///
-/// NOTE: qemu does not appear to propogate the exit code to the shell
-///
-/// # Safety
-///
-/// - Shutdown means shutdown
-pub unsafe fn shutdown(reason: Reason) -> ! {
+/// Shutdown the whole platform. qemu does not appear to
+/// propogate the exit code to the shell.
+pub fn shutdown(reason: Reason) -> ! {
     match reason {
         Reason::None => early_println("\nShutdown"),
         Reason::Failure => early_println("\nShutdown due to error"),
@@ -39,6 +35,6 @@ pub unsafe fn shutdown(reason: Reason) -> ! {
         RESET_FN_ID,
         [SHUTDOWN, reason.into(), 0, 0, 0, 0],
     )
-    .unwrap_unchecked();
-    unreachable!();
+    .expect("failed to make sbi call for shutdown");
+    unreachable!()
 }

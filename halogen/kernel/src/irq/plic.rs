@@ -23,18 +23,22 @@ lazy_static! {
     static ref PLIC: Mutex<Plic> = unsafe { Mutex::new(Plic::new(PLIC_BASE)) };
 }
 
+/// Register a function as the interrupt service routine for a given interrupt
+/// source. This will be called when the IRQ is returned as pending.
 pub fn register_isr(irq: usize, isr: InterruptRoutine) {
     unsafe {
         ISRS[irq] = Some(isr);
     }
 }
 
+/// Enable an interrupt source on the calling hart's context.
 pub fn set_enabled(irq: usize, enabled: bool) {
     critical_section! {
         PLIC.lock().set_enabled(0, irq, enabled);
     }
 }
 
+/// Set the priority of an interrupt source on the calling hart's context.
 pub fn set_priority(irq: usize, priority: u32) {
     assert!(priority < PRIORITY_MAX);
     critical_section! {
@@ -42,6 +46,7 @@ pub fn set_priority(irq: usize, priority: u32) {
     }
 }
 
+/// Set interrupt priority threshold for the calling hart's context.
 pub fn set_threshold(threshold: u32) {
     critical_section! {
         PLIC.lock().set_threshold(0, threshold);
@@ -54,29 +59,25 @@ pub fn handle_next() -> Option<usize> {
     None
 }
 
-/// One word per interrupt source
+// One word per interrupt source.
 const PRIORITIES_OFFSET: isize = 0x0;
 const PRIORITIES_LEN: usize = INT_SOURCE_COUNT * 4;
 
-/// One bit per interrupt source
+// One bit per interrupt source.
 const PENDING_OFFSET: isize = 0x1000;
 const PENDING_LEN: usize = INT_SOURCE_COUNT / 8;
 
-/// One bit per interrupt source per hart context
+// One bit per interrupt source per hart context.
 const ENABLES_OFFSET: isize = 0x2000;
 const ENABLES_LEN: usize = (INT_SOURCE_COUNT / 8) * CONTEXT_COUNT;
 
-// 4K per context
+// 4K per context.
 const CONTEXT_OFFSET: isize = 0x200000;
 const CONTEXT_LEN: usize = 4 * KIB * CONTEXT_COUNT;
 
+/// A function that can be called as an ISR. Accepts no arguments and returns 0
+/// on success.
 pub type InterruptRoutine = fn() -> usize;
-
-#[repr(C, packed)]
-struct InterruptClaim {
-    priority: u32,
-    claim_complete: u32,
-}
 
 /// Platform-level interrupt controller per the RISC-V PLIC spec. The fields are
 /// contiguous in physical memory, but this does not necessarily hold after the

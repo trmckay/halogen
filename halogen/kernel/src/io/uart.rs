@@ -19,6 +19,7 @@ const LINE_STAT_OFFSET: usize = 5;
 const MODEM_STAT_OFFSET: usize = 6;
 const SCRATCH_OFFSET: usize = 7;
 
+/// Register the UART device as the main console.
 pub fn use_as_console() {
     unsafe {
         register_console(Box::new(Ns16550aUart::new(
@@ -27,22 +28,23 @@ pub fn use_as_console() {
     }
 }
 
+/// Driver for the NS16550A UART device.
 #[derive(Clone, Copy)]
 pub struct Ns16550aUart {
     base: VirtualAddress,
 }
 
 impl Ns16550aUart {
-    /// Create a new NS16550A UART module driver
+    /// Create a new NS16550A UART module driver.
     ///
     /// # Safety
     ///
-    /// * `base` must be mapped to a NS16550A device
+    /// - `base` must be mapped to a NS16550A device.
     pub const unsafe fn new(base: VirtualAddress) -> Ns16550aUart {
         Ns16550aUart { base }
     }
 
-    /// Initialize the UART module registers
+    /// Initialize the UART module registers.
     pub fn init(&mut self) {
         unsafe {
             ((self.base + FIFO_OFFSET).as_mut_ptr() as *mut u8).write_volatile(0b1);

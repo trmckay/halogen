@@ -1,7 +1,7 @@
 use super::error::SbiError;
 
 /// Make a call to the supporting environment, an M-mode firmware that
-/// implements the SBI spec
+/// implements the SBI spec.
 pub fn sbi_ecall(ext: usize, func: usize, args: [usize; 6]) -> Result<usize, SbiError> {
     let ret_code: isize;
     let val: usize;

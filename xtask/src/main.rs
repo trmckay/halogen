@@ -26,6 +26,8 @@ fn main() -> Result<()> {
         .subcommand_required(true)
         .subcommand(ClapCommand::new("build").about("Build the kernel in `build`"))
         .subcommand(ClapCommand::new("clean").about("Clean up compiler artifacts"))
+        .subcommand(ClapCommand::new("show-dump").about("View an object dump of the kernel"))
+        .subcommand(ClapCommand::new("docs").about("Open crate documentation in the browser"))
         .subcommand(
             ClapCommand::new("test")
                 .about("Run unit tests in QEMU")
@@ -63,6 +65,8 @@ fn main() -> Result<()> {
         }
         Some(("build", _)) => build(),
         Some(("clean", _)) => clean(),
+        Some(("show-dump", _)) => show_dump(&format!("{}/{}", BUILD_DIR, KERNEL_TEST_ELF_DEST)),
+        Some(("docs", _)) => open_docs(),
         Some(("fmt", _)) => fmt(false),
         Some(("check", _)) => check(),
         Some(("run", run_args)) => {
@@ -111,16 +115,16 @@ const COMMON_LIB_DIR: &str = "halogen/common";
 const PROGRAMS_DIR: &str = "halogen/userspace/programs";
 const XTASK_DIR: &str = "xtask";
 const INCLUDE_PROGRAMS_DIR: &str = "halogen/userspace/include-programs";
+const BUILD_DIR: &str = "build";
 
 const CRATES: &[&str] = &[KERNEL_DIR, COMMON_LIB_DIR, INCLUDE_PROGRAMS_DIR, XTASK_DIR];
 
-const BUILD_DIR: &str = "build";
 const KERNEL_ELF_DEST: &str = "halogen.elf";
 const KERNEL_BIN_DEST: &str = "halogen.bin";
 const KERNEL_TEST_ELF_DEST: &str = "halogen-test.elf";
 const KERNEL_TEST_BIN_DEST: &str = "halogen-test.bin";
-const SBI_BIN_DEST: &str = "opensbi.bin";
 
+const SBI_BIN_DEST: &str = "opensbi.bin";
 const SBI_PIC: &str = "no";
 const SBI_PLATFORM: &str = "generic";
 const SBI_BIN: &str = "build/platform/generic/firmware/fw_jump.bin";
@@ -237,7 +241,7 @@ fn clean() -> Result<()> {
     }
     check_exit!(
         cmd!("make", "clean").current_dir(SBI_DIR),
-        "failed to clean SBI project"
+        "failed to clean OpenSBI"
     )?;
     check_exit!(
         cmd!(
@@ -352,5 +356,13 @@ fn show_dump(elf: &str) -> Result<()> {
         "failed to open object dump in pager"
     )?;
 
+    Ok(())
+}
+
+fn open_docs() -> Result<()> {
+    check_exit!(
+        cmd!("cargo", "doc", "--open").current_dir(KERNEL_DIR),
+        "Failed to build documentation"
+    )?;
     Ok(())
 }

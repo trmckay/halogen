@@ -7,7 +7,8 @@ use crate::{
     task::thread::{ThreadFunction, ThreadShim},
 };
 
-#[repr(usize)] // `usize` to simplify alignment
+/// Privilege level that the hart was running at.
+#[repr(usize)]
 #[derive(Clone, Copy, Debug)]
 pub enum Privilege {
     Machine = 0,
@@ -55,7 +56,8 @@ unsafe impl Sync for Context {}
 unsafe impl Send for Context {}
 
 impl Default for Context {
-    /// Create a new context from kernel code
+    /// Create a new context with registers `gp` and `tp` configured for use in
+    /// kernel-space on the calling hart.
     fn default() -> Context {
         let mut ctx = Context {
             registers: [0; 31],
@@ -71,6 +73,8 @@ impl Default for Context {
 }
 
 impl Context {
+    /// Load the initial state of a context such that the `shim` function will
+    /// call `entry` with `arg` as the first argument and `sp` as the stack.
     pub fn prepare(&mut self, sp: *mut u8, shim: ThreadShim, entry: ThreadFunction, arg: usize) {
         self.pc = shim as usize;
         self.registers[9] = entry as usize;

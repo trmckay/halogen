@@ -2,6 +2,7 @@ use owo_colors::Style;
 
 pub use crate::{error, info, log, quiet, trace, warn};
 
+/// Log level for the console.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd)]
 pub enum Level {
     Trace = 3,
@@ -38,16 +39,19 @@ impl From<&Level> for Style {
 
 static mut LOG_LEVEL: Level = Level::Warn;
 
+/// Set the log level.
 pub fn set_level(level: Level) {
     unsafe {
         LOG_LEVEL = level;
     }
 }
 
+/// Get the current log level.
 pub fn get_level() -> Level {
     unsafe { LOG_LEVEL }
 }
 
+/// Do not call this manually.
 #[macro_export]
 macro_rules! log {
     ($level:expr, $($arg:tt)*) => {
@@ -72,6 +76,7 @@ macro_rules! log {
     };
 }
 
+/// Log with "trace" priority. Follows `println!` syntax.
 #[macro_export]
 macro_rules! trace {
     ($($arg:tt)*) => {
@@ -79,6 +84,7 @@ macro_rules! trace {
     };
 }
 
+/// Log with "info" priority. Follows `println!` syntax.
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {
@@ -86,6 +92,7 @@ macro_rules! info {
     };
 }
 
+/// Log with "warn" priority. Follows `println!` syntax.
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => {
@@ -93,6 +100,7 @@ macro_rules! warn {
     };
 }
 
+/// Log with "error" priority. Follows `println!` syntax.
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => {
@@ -100,6 +108,7 @@ macro_rules! error {
     };
 }
 
+/// Do not print any logs for a block statement.
 #[macro_export]
 macro_rules! quiet {
     { $($stmt:stmt)+ } => {

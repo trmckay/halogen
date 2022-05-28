@@ -24,45 +24,43 @@ extern crate alloc;
 #[cfg(not(target_arch = "riscv64"))]
 core::compile_error!("rv64gc+sv39 is the only supported platform");
 
-/// Unit and integration tests
+/// Unit and integration tests.
 #[cfg(test)]
 mod tests;
 
-/// Entry-point for kernel
+/// Entry-point for kernel.
 mod boot;
-/// Panic language-feature
+/// Panic language-feature.
 mod panic;
 
-/// Architecture state and functionality
+/// Architecture state and functionality.
 pub mod arch;
-/// Kernel error type
+/// Kernel error type.
 pub mod error;
-/// I/O devices
+/// I/O devices.
 pub mod io;
-/// Interrupt request configuration
+/// Interrupt request configuration.
 pub mod irq;
-/// Debug logging over UART
+/// Debug logging over UART.
 pub mod log;
-/// Memory management
+/// Memory management.
 pub mod mem;
-/// Interfacing with OpenSBI
+/// Interfacing with OpenSBI.
 pub mod sbi;
-/// System call definitions
+/// System call definitions.
 pub mod syscall;
-/// Processes and threads
+/// Processes and threads.
 pub mod task;
-/// Trap handler
+/// Trap handler.
 pub mod trap;
 
 const LOG_LEVEL: log::Level = log::Level::Trace;
 
-/// Entry-point for the kernel
+/// Entry-point for the kernel.
 ///
 /// # Safety
 ///
-/// * `free_start` should point to a mapped, writeable, page-aligned, and free
-///   address
-/// * `free_size` should be page-aligned
+/// - This is only called once by the bootstrap code.
 #[allow(named_asm_labels)]
 #[repr(align(4))]
 pub unsafe extern "C" fn kinit() -> ! {
@@ -82,6 +80,7 @@ pub unsafe extern "C" fn kinit() -> ! {
     task::executor::handoff(kmain, 0);
 }
 
+/// Main thread for the kernel.
 extern "C" fn kmain(_: usize) -> usize {
     #[cfg(test)]
     crate::test_harness();
@@ -89,7 +88,5 @@ extern "C" fn kmain(_: usize) -> usize {
     // Enable external interrupts
     irq::enable_external();
 
-    unsafe {
-        sbi::reset::shutdown(sbi::reset::Reason::None);
-    }
+    sbi::reset::shutdown(sbi::reset::Reason::None);
 }

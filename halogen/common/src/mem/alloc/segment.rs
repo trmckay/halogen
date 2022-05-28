@@ -64,7 +64,7 @@ impl<T: Address> SegmentAllocator<T> {
 
                 let segment = Segment::from_size(start, size);
 
-                if self.segment.contains_other(segment) {
+                if self.segment.encapsulates(segment) {
                     self.allocations.push(segment);
                     Some(segment.start)
                 } else {

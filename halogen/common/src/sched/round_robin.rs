@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 
 use super::TaskScheduler;
 
+/// Round-robin task scheduler.
 #[derive(Default, Clone)]
 pub struct RoundRobinScheduler {
     queue: VecDeque<usize>,

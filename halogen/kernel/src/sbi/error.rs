@@ -1,3 +1,4 @@
+/// Possible responses from the firmware.
 #[derive(Clone, Copy, Debug)]
 pub enum SbiError {
     Failed,

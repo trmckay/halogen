@@ -1,6 +1,7 @@
+/// Process and thread execution.
 pub mod executor;
-mod state;
 
+/// Kernel thread structure.
 pub mod thread;
 
 pub use executor::{join, resume, spawn, tid, yld};

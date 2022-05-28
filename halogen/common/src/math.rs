@@ -1,4 +1,4 @@
-/// Macro to generate a bitmask for just the nth bit
+/// Generate a bitmask for just the nth bit.
 ///
 /// # Example
 ///
@@ -12,7 +12,7 @@ macro_rules! nth_bit {
     };
 }
 
-/// Create a bitmask for the `$msb` to `$lsb` bits
+/// Create a bitmask for the `$msb` to `$lsb` bits.
 #[macro_export]
 macro_rules! mask_range {
     ($msb:expr, $lsb:expr) => {
@@ -37,7 +37,7 @@ macro_rules! align_up {
     }};
 }
 
-/// Aligns an address down to a boundary.
+/// Align an address down to a boundary.
 ///
 /// # Example
 ///
@@ -53,7 +53,7 @@ macro_rules! align_down {
     }};
 }
 
-/// Evaluates to true if an address is aligned to a boundary
+/// Evaluate to true if an address is aligned to a boundary.
 #[macro_export]
 #[allow(clippy::nonminimal_bool)]
 macro_rules! is_aligned {
@@ -62,7 +62,7 @@ macro_rules! is_aligned {
     }};
 }
 
-/// Base 2 logarithm
+/// Base 2 logarithm.
 #[macro_export]
 macro_rules! log2 {
     ($n:expr) => {{
@@ -78,7 +78,7 @@ macro_rules! log2 {
     }};
 }
 
-/// Clamp an expression between a min and max
+/// Clamp an expression between a min and max.
 #[macro_export]
 macro_rules! clamp {
     ($n:expr, $max:expr) => {
