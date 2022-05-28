@@ -1,9 +1,7 @@
 # Halogen
 
-[![Build status](https://drone.trmckay.com/api/badges/tm/halogen/status.svg)](https://drone.trmckay.com/tm/halogen)
-
-A simple OS kernel for RISC-V made with Rust.
-
+Halogen is an operating system kernel for RISC-V rv64gc. It's called Halogen
+because it's lightweight and blows up if you aren't careful.
 
 ## Development
 
@@ -16,30 +14,11 @@ A simple OS kernel for RISC-V made with Rust.
 ### Usage
 
 [`cargo-xtask`](https://github.com/matklad/cargo-xtask/) is used as the build system, since
-Cargo alone cannot apply any post-processing to compiler artifacts.
-
-```
-$ cargo xtask --help
-Halogen cargo-xtask build system
-
-USAGE:
-    xtask <SUBCOMMAND>
-
-OPTIONS:
-    -h, --help    Print help information
-
-SUBCOMMANDS:
-    build    Build the kernel in ./build
-    check    Cargo check/clippy/fmt each crate
-    clean    Clean up compiler artifacts
-    fmt      Check format with rustfmt
-    help     Print this message or the help of the given subcommand(s)
-    run      Run the kernel in QEMU
-    test     Run unit tests in QEMU
-
-```
+Cargo alone cannot apply any post-processing to compiler artifacts. Run `cargo xtask --help`
+for a list of build tasks.
 
 ## Related
 
-- [docker-rust-riscv64](https://git.trmckay.com/tm/docker-rust-riscv64)
-- [riscv-dev-ansible](https://git.trmckay.com/tm/riscv-dev-ansible)
+- [OpenSBI](https://github.com/riscv-software-src/opensbi)
+- [docker-rust-riscv64](https://github.com/trmckay/docker-rust-riscv64)
+- [riscv-dev-ansible](https://github.com/trmckay/riscv-dev-ansible)

@@ -3,7 +3,7 @@
     "tasks": [
         {
             "type": "shell",
-            "command": "make all",
+            "command": "cargo xtask build",
             "problemMatcher": [],
             "label": "Build",
             "group": {
@@ -13,7 +13,7 @@
         },
         {
             "type": "shell",
-            "command": "make clean",
+            "command": "cargo xtask clean",
             "problemMatcher": [],
             "label": "Clean"
         },

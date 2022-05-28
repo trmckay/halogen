@@ -1,0 +1,16 @@
+[package]
+name = "halogen"
+version = "0.1.0"
+authors = ["Trevor McKay <tm@trmckay.com>"]
+edition = "2018"
+
+[dependencies]
+halogen-macros = { path = "../proc-macro" }
+halogen-common = { path = "../common", default_features = false, features = ["alloc"] }
+halogen-programs = { path = "../userspace/include-programs" }
+qemu-exit = "3.0.1"
+spin = "0.9.2"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+riscv = "0.7.0"
+owo-colors = "3.4.0"
+goblin = { version = "0.5.1", default_features = false, features = ["elf32", "elf64", "endian_fd"] }

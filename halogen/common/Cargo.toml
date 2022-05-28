@@ -1,0 +1,11 @@
+[package]
+name = "halogen-common"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+alloc = []
+
+[dependencies]
+halogen-macros = { path = "../proc-macro" }

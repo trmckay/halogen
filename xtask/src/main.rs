@@ -10,6 +10,7 @@ use serde_json as json;
 
 fn main() -> Result<()> {
     let debug_subcmd = ClapCommand::new("debug").about("Run in QEMU and start a GDB server");
+    let dump_subcmd = ClapCommand::new("dump").about("Show the object dump of the kernel image");
     let attach_subcmd = ClapCommand::new("attach")
         .about("Attach to the GDB server")
         .arg(
@@ -25,16 +26,17 @@ fn main() -> Result<()> {
         .subcommand_required(true)
         .subcommand(ClapCommand::new("build").about("Build the kernel in `build`"))
         .subcommand(ClapCommand::new("clean").about("Clean up compiler artifacts"))
-        .subcommand(ClapCommand::new("show-dump").about("View an object dump of the kernel"))
         .subcommand(
             ClapCommand::new("test")
                 .about("Run unit tests in QEMU")
+                .subcommand(dump_subcmd.clone())
                 .subcommand(debug_subcmd.clone())
                 .subcommand(attach_subcmd.clone()),
         )
         .subcommand(
             ClapCommand::new("run")
                 .about("Run the kernel in QEMU")
+                .subcommand(dump_subcmd)
                 .subcommand(debug_subcmd)
                 .subcommand(attach_subcmd),
         )
@@ -45,6 +47,7 @@ fn main() -> Result<()> {
     match args.subcommand() {
         Some(("test", test_args)) => {
             match test_args.subcommand() {
+                Some(("dump", _)) => show_dump(&format!("{}/{}", BUILD_DIR, KERNEL_TEST_ELF_DEST)),
                 Some(("debug", _)) => test(true),
                 Some(("attach", attach_args)) => {
                     attach(
@@ -60,11 +63,11 @@ fn main() -> Result<()> {
         }
         Some(("build", _)) => build(),
         Some(("clean", _)) => clean(),
-        Some(("show-dump", _)) => show_dump(),
         Some(("fmt", _)) => fmt(false),
         Some(("check", _)) => check(),
         Some(("run", run_args)) => {
             match run_args.subcommand() {
+                Some(("dump", _)) => show_dump(&format!("{}/{}", BUILD_DIR, KERNEL_ELF_DEST)),
                 Some(("debug", _)) => run(true),
                 Some(("attach", attach_args)) => {
                     attach(
@@ -87,33 +90,29 @@ macro_rules! cmd {
         let args = &[$($arg),+];
         Command::new($cmd).args(args)
     }};
-    ($cmd:expr $(,)*) => {{
-        Command::new($cmd)
-    }};
-}
-
-macro_rules! wait {
-    ($cmd:expr) => {
-        $cmd.spawn()?.wait()?
-    };
 }
 
 macro_rules! check_exit {
-    ($cmd:expr, $msg:expr) => {{
-        if !$cmd.status()?.success() {
-            return Err(anyhow!($msg));
+    ($cmd:expr, $msg:expr) => {
+        if $cmd.status()?.success() {
+            Ok(())
+        } else {
+            Err(anyhow!($msg))
         }
-    }};
+    };
 }
 
 const CROSS_COMPILE: &str = "riscv64-unknown-elf-";
 const RUSTC_TARGET: &str = "riscv64gc-unknown-none-elf";
 
-const SBI_DIR: &str = "kernel/opensbi";
-const KERNEL_DIR: &str = "kernel/halogen";
-const PROGRAMS_DIR: &str = "userspace/programs";
+const SBI_DIR: &str = "opensbi";
+const KERNEL_DIR: &str = "halogen/kernel";
+const COMMON_LIB_DIR: &str = "halogen/common";
+const PROGRAMS_DIR: &str = "halogen/userspace/programs";
 const XTASK_DIR: &str = "xtask";
-const INCLUDE_PROGRAMS_DIR: &str = "userspace/include_programs";
+const INCLUDE_PROGRAMS_DIR: &str = "halogen/userspace/include-programs";
+
+const CRATES: &[&str] = &[KERNEL_DIR, COMMON_LIB_DIR, INCLUDE_PROGRAMS_DIR, XTASK_DIR];
 
 const BUILD_DIR: &str = "build";
 const KERNEL_ELF_DEST: &str = "halogen.elf";
@@ -130,7 +129,7 @@ fn build() -> Result<()> {
     check_exit!(
         cmd!("cargo", "build").current_dir(KERNEL_DIR),
         "failed to build kernel"
-    );
+    )?;
 
     check_exit!(
         cmd!(
@@ -142,7 +141,7 @@ fn build() -> Result<()> {
         )
         .current_dir(SBI_DIR),
         "failed to build firmware"
-    );
+    )?;
 
     fs::create_dir_all(BUILD_DIR)?;
 
@@ -168,7 +167,7 @@ fn build() -> Result<()> {
             &kernel_bin,
         ),
         "failed to flatten kernel binary"
-    );
+    )?;
 
     let cargo_kernel_test_elf: String = String::from_utf8_lossy(
         &cmd!("cargo", "test", "--no-run", "--message-format=json")
@@ -205,17 +204,24 @@ fn build() -> Result<()> {
             &kernel_test_bin,
         ),
         "failed to flatten kernel test binary"
-    );
+    )?;
 
     Ok(())
 }
 
 fn fmt(check: bool) -> Result<()> {
-    for dir in &[KERNEL_DIR, XTASK_DIR, INCLUDE_PROGRAMS_DIR] {
+    for dir in CRATES {
+        check_exit!(
+            cmd!("cargo", "clippy").current_dir(dir),
+            "failed clippy check"
+        )?;
         if check {
-            wait!(cmd!("cargo", "fmt", "--check").current_dir(dir));
+            check_exit!(
+                cmd!("cargo", "fmt", "--check").current_dir(dir),
+                "failed format check"
+            )?;
         } else {
-            wait!(cmd!("cargo", "fmt").current_dir(dir));
+            check_exit!(cmd!("cargo", "fmt").current_dir(dir), "failed to format")?;
         }
     }
     Ok(())
@@ -223,21 +229,29 @@ fn fmt(check: bool) -> Result<()> {
 
 fn clean() -> Result<()> {
     let _ = fs::remove_dir_all(BUILD_DIR);
-    for dir in &[KERNEL_DIR, XTASK_DIR, INCLUDE_PROGRAMS_DIR] {
-        wait!(cmd!("cargo", "clean").current_dir(dir));
+    for dir in CRATES {
+        check_exit!(
+            cmd!("cargo", "clean").current_dir(dir),
+            "failed to cargo clean"
+        )?;
     }
-    wait!(cmd!("make", "clean").current_dir(SBI_DIR));
-    wait!(cmd!(
-        "sh",
-        "-c",
-        &format!(
-            "find {} -type f -regex '.*\\.\\(o\\|elf\\|bin\\)$' -print0 | xargs -0 rm -f",
-            PROGRAMS_DIR
-        )
-    ));
+    check_exit!(
+        cmd!("make", "clean").current_dir(SBI_DIR),
+        "failed to clean SBI project"
+    )?;
+    check_exit!(
+        cmd!(
+            "sh",
+            "-c",
+            &format!(
+                "find {} -type f -regex '.*\\.\\(o\\|elf\\|bin\\)$' -print0 | xargs -0 rm -f",
+                PROGRAMS_DIR
+            ),
+        ),
+        "failed to find and delete compiler artifacts"
+    )?;
     Ok(())
 }
-
 
 const QEMU: &str = "qemu-system-riscv64";
 const QEMU_ARGS: &[&str] = &[
@@ -265,11 +279,10 @@ where
 
     if debug {
         args.extend_from_slice(&["-s", "-S"]);
-        println!("Launching debug server. Attach with `cargo xtask (run|test) attach`.")
     }
 
-    check_exit!(cmd!(QEMU).args(args), "QEMU exited with error");
-    Ok(())
+    let err = exec::Command::new(QEMU).args(&args).exec();
+    Err(anyhow!("failed to exec QEMU: {}", err))
 }
 
 fn run(debug: bool) -> Result<()> {
@@ -278,6 +291,10 @@ fn run(debug: bool) -> Result<()> {
 }
 
 fn test(debug: bool) -> Result<()> {
+    check_exit!(
+        cmd!("cargo", "test", "--color=always").current_dir(COMMON_LIB_DIR),
+        "failed unit tests"
+    )?;
     build()?;
     qemu(format!("{}/{}", BUILD_DIR, KERNEL_TEST_BIN_DEST), debug)
 }
@@ -292,19 +309,21 @@ const GDBINIT: &[&str] = &[
 fn attach<T>(elf: T, gdb_args: &[&str]) -> Result<()>
 where
     T: AsRef<Path>, {
-    let mut args: Vec<&str> = GDBINIT.iter().flat_map(|&cmd| ["-ex", cmd]).collect();
+    let gdb = env::var("RUST_GDB").unwrap_or(format!("{}gdb", CROSS_COMPILE));
+    let rust_gdb_env = format!("RUST_GDB={}", gdb);
+    let mut args: Vec<&str> = vec![&rust_gdb_env, "rust-gdb", "-nh"];
+
+    GDBINIT
+        .iter()
+        .flat_map(|&cmd| ["-ex", cmd])
+        .for_each(|arg| args.push(arg));
+
     let symbol_file_cmd = format!("symbol-file '{}'", elf.as_ref().to_string_lossy());
     args.extend_from_slice(&["-q", "-ex", &symbol_file_cmd]);
     args.extend_from_slice(gdb_args);
 
-    check_exit!(
-        cmd!("rust-gdb")
-            .args(args)
-            .env("RUST_GDB", format!("{}gdb", CROSS_COMPILE)),
-        "GDB exited with error"
-    );
-
-    Ok(())
+    let err = exec::Command::new("env").args(&args).exec();
+    Err(anyhow!("failed to exec rust-gdb: {}", err))
 }
 
 fn check() -> Result<()> {
@@ -312,33 +331,26 @@ fn check() -> Result<()> {
     for dir in &[KERNEL_DIR, XTASK_DIR, INCLUDE_PROGRAMS_DIR] {
         check_exit!(
             cmd!("cargo", "check").current_dir(dir),
-            "Failed cargo check"
-        );
+            "failed cargo check"
+        )?;
         check_exit!(
             cmd!("cargo", "clippy").current_dir(dir),
-            "Failed cargo clippy"
-        );
+            "failed cargo clippy"
+        )?;
     }
     Ok(())
 }
 
-fn show_dump() -> Result<()> {
+fn show_dump(elf: &str) -> Result<()> {
     build()?;
 
     let objdump = format!("{}objdump", CROSS_COMPILE);
     let pager = env::var("PAGER").unwrap_or_else(|_| "less".to_string());
 
     check_exit!(
-        cmd!(
-            "sh",
-            "-c",
-            &format!(
-                "{} -S {}/{} | {}",
-                objdump, BUILD_DIR, KERNEL_ELF_DEST, pager
-            )
-        ),
-        "Failed to open object dump in pager"
-    );
+        cmd!("sh", "-c", &format!("{} -S {} | {}", objdump, elf, pager)),
+        "failed to open object dump in pager"
+    )?;
 
     Ok(())
 }

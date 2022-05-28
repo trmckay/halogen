@@ -9,12 +9,13 @@ steps:
           - git submodule update --init --recursive
 
     - name: check
-      image: trmckay/rust-riscv64
+      image: trmckay/rust-riscv
       commands:
           - cargo xtask check
           - cargo xtask build
 
     - name: test
-      image: trmckay/rust-riscv64
+      image: trmckay/rust-riscv
       commands:
-          - cargo xtask test
+          - cargo xtask test 2>&1 | tee /tmp/halogen-test.out
+          - if ! egrep -q '^Shutdown due to error' /tmp/halogen-test.out; then true; else false; fi

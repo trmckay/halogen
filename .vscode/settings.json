@@ -1,3 +1,10 @@
 {
-    "rust-analyzer.checkOnSave.allTargets": false
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.linkedProjects": [
+        "halogen/common/Cargo.toml",
+        "halogen/kernel/Cargo.toml",
+        "halogen/proc-macro/Cargo.toml",
+        "halogen/userspace/include-programs/Cargo.toml",
+        "xtask/Cargo.toml",
+    ]
 }
