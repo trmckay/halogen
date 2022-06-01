@@ -9,21 +9,17 @@ use super::TaskScheduler;
 #[derive(Default, Clone)]
 pub struct FifoScheduler {
     queue: VecDeque<usize>,
-    tid: usize,
     current: Option<usize>,
 }
 
 impl TaskScheduler for FifoScheduler {
     type Handle = usize;
 
-    fn add_new_with_priority(&mut self, _: isize) -> Option<Self::Handle> {
-        let tid = self.tid;
-        self.tid += 1;
-        self.queue.push_front(tid);
-        Some(tid)
+    fn add_with_priority(&mut self, id: Self::Handle, _priority: isize) {
+        self.queue.push_front(id);
     }
 
-    fn set_priority(&self, _: Self::Handle, _: isize) {
+    fn set_priority(&self, _id: Self::Handle, _priority: isize) {
         unimplemented!()
     }
 

@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 use super::regions::VIRT_SPACE;
-use crate::{error::KernelError, log::*, mem::paging::PAGE_SIZE};
+use crate::{log::*, mem::paging::PAGE_SIZE};
 
 lazy_static! {
     static ref VIRTUAL_ALLOCATOR: Mutex<SegmentAllocator<VirtualAddress>> = {
@@ -13,11 +13,8 @@ lazy_static! {
 }
 
 /// Allocate an unused virtual address.
-pub fn virt_addr_alloc(size: usize) -> Result<VirtualAddress, KernelError> {
-    match VIRTUAL_ALLOCATOR.lock().alloc(size) {
-        Some(virt_addr) => Ok(virt_addr),
-        None => Err(KernelError::OutOfVirtualAddresses(None)),
-    }
+pub fn virt_addr_alloc(size: usize) -> Option<VirtualAddress> {
+    VIRTUAL_ALLOCATOR.lock().alloc(size)
 }
 
 /// Free an unmapped virtual address.

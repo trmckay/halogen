@@ -1,4 +1,4 @@
-use super::{call::sbi_ecall, error::SbiError};
+use super::call::sbi_ecall;
 use crate::{arch::TIMER_FREQ_HZ, log::*};
 
 const TIMER_EXT_ID: usize = 0x54494D45;
@@ -10,7 +10,7 @@ fn us_to_cycles(us: usize) -> usize {
 
 /// Set the timer such that it will trigger an interrupt in `delay_us`
 /// microseconds. A delay of `usize::MAX` will disable the timer.
-pub fn set(delay_us: usize) -> Result<usize, SbiError> {
+pub fn set(delay_us: usize) {
     let time = match delay_us {
         usize::MAX => usize::MAX,
         _ => {
@@ -20,5 +20,5 @@ pub fn set(delay_us: usize) -> Result<usize, SbiError> {
     };
 
     let args = [time, 0, 0, 0, 0, 0];
-    sbi_ecall(TIMER_EXT_ID, SET_TIMER_FUNC_ID, args)
+    sbi_ecall(TIMER_EXT_ID, SET_TIMER_FUNC_ID, args);
 }

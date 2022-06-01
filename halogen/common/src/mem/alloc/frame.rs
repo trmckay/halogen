@@ -143,7 +143,7 @@ impl<'a, const B: usize> FrameAllocator<'a, B> {
     pub unsafe fn free(&mut self, frame: PhysicalAddress) {
         assert!(self.contains(frame));
         let frame: usize = align_down!(usize::from(frame), B);
-        let new_head = frame.as_mut_ptr() as *mut FreeFrame;
+        let new_head = frame.add_offset(self.virt_offset()).as_mut_ptr() as *mut FreeFrame;
 
         if let Some(old_head) = self.head {
             (*new_head).0 = old_head;
@@ -262,5 +262,25 @@ mod test {
             usize::from(frames[3]),
             usize::from(allocator.alloc().unwrap())
         );
+    }
+
+    #[test]
+    fn boundary() {
+        let mut buf = vec![[0; 4096]; 16];
+        let start = buf.as_ptr() as usize;
+        let mut allocator: FrameAllocator<4096> =
+            unsafe { FrameAllocator::new(buf.as_mut_slice(), 0) };
+
+        let (used, boundary) = allocator.boundary().unwrap();
+
+        assert_eq!(0, used);
+        assert_eq!(start, boundary.into());
+
+        allocator.alloc().unwrap();
+
+        let (used, boundary) = allocator.boundary().unwrap();
+
+        assert_eq!(1, used);
+        assert_eq!(start + 4096, boundary.into());
     }
 }

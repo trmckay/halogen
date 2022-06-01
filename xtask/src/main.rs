@@ -8,7 +8,7 @@ use anyhow::{anyhow, Result};
 use clap::{Arg, Command as ClapCommand};
 use serde_json as json;
 
-fn main() -> Result<()> {
+fn main() {
     let debug_subcmd = ClapCommand::new("debug").about("Run in QEMU and start a GDB server");
     let dump_subcmd = ClapCommand::new("dump").about("Show the object dump of the kernel image");
     let attach_subcmd = ClapCommand::new("attach")
@@ -46,7 +46,7 @@ fn main() -> Result<()> {
         .subcommand(ClapCommand::new("check").about("Check that project compiles and is formatted"))
         .get_matches();
 
-    match args.subcommand() {
+    if let Err(why) = match args.subcommand() {
         Some(("test", test_args)) => {
             match test_args.subcommand() {
                 Some(("dump", _)) => show_dump(&format!("{}/{}", BUILD_DIR, KERNEL_TEST_ELF_DEST)),
@@ -86,6 +86,9 @@ fn main() -> Result<()> {
             }
         }
         _ => unreachable!(),
+    } {
+        println!("Error: {}", why);
+        std::process::exit(1);
     }
 }
 
@@ -361,7 +364,7 @@ fn show_dump(elf: &str) -> Result<()> {
 
 fn open_docs() -> Result<()> {
     check_exit!(
-        cmd!("cargo", "doc", "--open").current_dir(KERNEL_DIR),
+        cmd!("cargo", "doc", "--document-private-items", "--open").current_dir(KERNEL_DIR),
         "Failed to build documentation"
     )?;
     Ok(())

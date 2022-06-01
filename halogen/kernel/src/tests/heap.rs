@@ -5,7 +5,7 @@ use halogen_common::mem::KIB;
 use crate::mem::heap;
 
 #[test_case]
-fn independent_allocs() {
+fn independence() {
     let v1: Vec<usize> = vec![1; 1000];
     let mut v2: Vec<usize> = vec![2; 1000];
     let v3: Vec<usize> = vec![3; 1000];

@@ -1,10 +1,10 @@
 /// Interface for task schedulers. This is currently unfinished; the interface
 /// will likely shift when more complicated schedulers are added.
 pub trait TaskScheduler: Sync + Send {
-    type Handle: Copy + Sized + Sync + Send;
+    type Handle: Copy + Sized + Sync + Send + Eq;
 
     /// Add a task to the scheduling pool.
-    fn add_new_with_priority(&mut self, priority: isize) -> Option<Self::Handle>;
+    fn add_with_priority(&mut self, id: Self::Handle, priority: isize);
 
     /// Return the next task and internally mark it as running.
     fn next(&mut self) -> Option<Self::Handle>;
@@ -22,7 +22,7 @@ pub trait TaskScheduler: Sync + Send {
     fn yld(&mut self, job: Self::Handle);
 
     /// Add a new task with the lowest priority.
-    fn add_new(&mut self) -> Option<Self::Handle> {
-        self.add_new_with_priority(0)
+    fn add_new(&mut self, id: Self::Handle) {
+        self.add_with_priority(id, 0);
     }
 }

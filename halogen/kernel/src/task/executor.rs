@@ -4,8 +4,19 @@ use halogen_common::sched::{RoundRobinScheduler, TaskScheduler};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use super::thread::{Thread, ThreadFunction, ThreadId, ThreadState};
-use crate::{arch::Context, critical_section, error::KernelError, irq, kerror, log::*, sbi};
+use super::{
+    process::Process,
+    thread::{KernelThread, Thread, ThreadFunction, ThreadState},
+};
+use crate::{
+    arch::Context,
+    critical_section,
+    error::{KernelError, KernelResult},
+    irq, kerror,
+    log::*,
+    mem::paging::KERNEL_ASID,
+    sbi::timer,
+};
 
 /// Number of time slices each thread gets before being descheduled.
 pub const DEFAULT_QUANTA_LIMIT: usize = 4;
@@ -16,23 +27,10 @@ lazy_static! {
     static ref EXECUTOR: Mutex<Executor> = Mutex::new(Executor::default());
 }
 
-/// Wraps a thread function to capture the return value and cleanly exit.
-extern "C" fn thread_shim(entry: ThreadFunction, arg: usize) {
-    let ret = entry(arg);
-
-    info!("Thread {} finished (ret={})", tid(), ret);
-
-    critical_section! {
-        EXECUTOR.lock().register_return(ret);
-    }
-
-    sbi::timer::set(0).expect("failed to set timer");
-}
-
 /// Add a kernel thread to the executor pool.
-pub fn spawn(entry: ThreadFunction, arg: usize) -> Result<usize, KernelError> {
-    critical_section! {
-        match EXECUTOR.lock().spawn(entry, arg) {
+pub fn spawn(entry: ThreadFunction, arg: usize) -> KernelResult<usize> {
+    critical_section!({
+        match EXECUTOR.lock().spawn_kernel(entry, arg) {
             Err(why) => {
                 error!("Failed to spawn thread: {:?}", why);
                 Err(why)
@@ -42,32 +40,63 @@ pub fn spawn(entry: ThreadFunction, arg: usize) -> Result<usize, KernelError> {
                 Ok(tid)
             }
         }
-    }
+    })
 }
 
 /// Give up remaining quanta.
 pub fn yld() {
-    critical_section! {
+    critical_section! {{
         EXECUTOR.lock().yld();
-        sbi::timer::set(0).expect("failed to set timer")
-    };
+        timer::set(0);
+    }};
+}
+
+pub fn exit(status: isize) {
+    critical_section! {{
+        EXECUTOR.lock().exit(status);
+    }};
+    yld();
+}
+
+/// Spawn a process and return the PID and main thread's TID.
+pub fn exec(elf: &[u8]) -> KernelResult<(usize, usize)> {
+    let (pid, tid) = critical_section!({
+        let mut executor = EXECUTOR.lock();
+        let pid = executor.get_pid();
+        let mut proc = Process::try_from_elf(pid, elf)?;
+
+        let main_tid = executor.get_tid();
+        let main = proc.create_main(main_tid)?;
+
+        executor.add_thread(main_tid, Thread::User(main));
+        executor.processes.insert(pid, proc);
+
+        Ok((pid, main_tid))
+    })?;
+
+    trace!("Create process {} with main thread {}", pid, tid);
+
+    yld();
+
+    Ok((pid, tid))
 }
 
 /// Wait for a thread to complete and return its result.
-pub fn join(tid: usize) -> Result<usize, KernelError> {
+pub fn join(tid: usize) -> KernelResult<isize> {
     loop {
-        let ret = critical_section! {
-            EXECUTOR.lock().reap(tid)
-        };
-
-        match ret {
-            Err(why) => return Err(why),
-            Ok(Some(ret)) => return Ok(ret),
-            _ => yld(),
+        let completed = critical_section!({ EXECUTOR.lock().is_complete(tid) });
+        if completed {
+            return critical_section!({
+                EXECUTOR
+                    .lock()
+                    .reap(tid)
+                    .map(|opt| opt.expect("complete thread has no exit status"))
+            });
+        } else {
+            yld()
         }
     }
 }
-
 
 /// Save the context for the current thread and return the next context.
 ///
@@ -86,7 +115,7 @@ pub fn handoff(entry: ThreadFunction, arg: usize) -> ! {
     spawn(entry, arg).expect("failed to spawn handoff thread");
 
     irq::enable_timer();
-    sbi::timer::set(0).expect("failed to set timer");
+    timer::set(0);
 
     panic!("returned from executor handoff")
 }
@@ -95,7 +124,7 @@ pub fn handoff(entry: ThreadFunction, arg: usize) -> ! {
 pub fn timer_event() {
     let mut executor = EXECUTOR.lock();
     executor.register_quantum();
-    sbi::timer::set(executor.quantum_len).expect("failed to set timer");
+    timer::set(executor.quantum_len);
 }
 
 /// Get the ID of the calling thread.
@@ -108,20 +137,26 @@ pub fn tid() -> usize {
 }
 
 /// Coordinates execution and scheduling of processes and kernel threads.
-pub struct Executor {
-    scheduler: Box<dyn TaskScheduler<Handle = ThreadId>>,
-    threads: BTreeMap<ThreadId, Thread>,
+struct Executor {
+    tid_counter: usize,
+    scheduler: Box<dyn TaskScheduler<Handle = usize>>,
+    threads: BTreeMap<usize, Thread>,
     quanta_limit: usize,
-    quanta: BTreeMap<ThreadId, usize>,
+    quanta: BTreeMap<usize, usize>,
     quantum_len: usize,
+    processes: BTreeMap<usize, Process>,
+    pid_counter: usize,
 }
 
 impl Default for Executor {
     fn default() -> Executor {
         Executor {
+            tid_counter: 0,
+            pid_counter: KERNEL_ASID as usize + 1,
             quanta_limit: DEFAULT_QUANTA_LIMIT,
             quantum_len: DEFAULT_QUANTUM_US,
             threads: BTreeMap::default(),
+            processes: BTreeMap::default(),
             quanta: BTreeMap::default(),
             scheduler: Box::new(RoundRobinScheduler::default()),
         }
@@ -130,32 +165,29 @@ impl Default for Executor {
 
 impl Executor {
     /// Create a new thread.
-    fn spawn(&mut self, entry: ThreadFunction, arg: usize) -> Result<usize, KernelError> {
-        let tid = match self.scheduler.add_new() {
-            Some(tid) => tid,
-            None => {
-                return kerror!(
-                    KernelError::ThreadCreate,
-                    kerror!(KernelError::SchedulerAdd)
-                )
-                .into()
-            }
-        };
+    fn spawn_kernel(&mut self, entry: ThreadFunction, arg: usize) -> KernelResult<usize> {
+        let tid = self.get_tid();
+        self.scheduler.add_new(tid);
 
-        match Thread::new_kernel(tid, entry, arg) {
-            Ok(mut thread) => {
-                // Prepare the context to enter at the thread shim holding the correct arguments
-                thread
-                    .context
-                    .prepare(thread.stack(), thread_shim, thread.entry, thread.arg);
+        // Prepare the context to enter at the thread shim holding the correct arguments
+        let thread = Thread::Kernel(KernelThread::try_new(tid, entry, arg)?);
 
-                self.threads.insert(tid, thread);
-                self.quanta.insert(tid, 0);
+        self.threads.insert(tid, thread);
+        self.quanta.insert(tid, 0);
 
-                Ok(tid)
-            }
-            Err(why) => kerror!(KernelError::ThreadCreate, why).into(),
-        }
+        Ok(tid)
+    }
+
+    fn get_tid(&mut self) -> usize {
+        let tid = self.tid_counter;
+        self.tid_counter += 1;
+        tid
+    }
+
+    fn get_pid(&mut self) -> usize {
+        let pid = self.pid_counter;
+        self.pid_counter += 1;
+        pid
     }
 
     /// Yield the caller's remaining time.
@@ -166,32 +198,56 @@ impl Executor {
         }
     }
 
-    /// Clean up a thread and return its value.
-    fn reap(&mut self, tid: usize) -> Result<Option<usize>, KernelError> {
+    /// Returns true if the thread exists and is complete.
+    fn is_complete(&self, tid: usize) -> bool {
         match self.threads.get(&tid) {
-            None => kerror!(KernelError::ThreadReap, kerror!(KernelError::NoSuchThread)).into(),
+            Some(thread) => matches!(thread.state(), ThreadState::Finished),
+            None => false,
+        }
+    }
+
+    /// Clean up a thread and return its value.
+    fn reap(&mut self, tid: usize) -> KernelResult<Option<isize>> {
+        match self.threads.get(&tid) {
+            None => kerror!(KernelError::NoSuchThread).into(),
             Some(thread) => {
-                Ok(match thread.state {
-                    ThreadState::Finished => {
-                        trace!("Reap thread {}", thread.tid);
-                        let tid = thread.tid;
-                        let ret = Some(thread.ret);
-                        self.quanta.remove(&tid);
-                        self.threads.remove(&tid);
-                        ret
+                trace!("Reap thread {}", thread);
+
+                let tid = thread.tid();
+                let ret = thread.exit_status();
+
+                // Clean up process if this was the main thread.
+                if let Thread::User(ut) = thread {
+                    let (pid, main_tid) = {
+                        let parent = self
+                            .processes
+                            .get_mut(&ut.pid)
+                            .expect("thread has no parent");
+
+                        parent.tids.retain(|&tid| tid != thread.tid());
+                        (parent.pid, parent.main_tid)
+                    };
+
+                    if thread.tid() == main_tid {
+                        info!("Clean up process {}", pid);
+                        self.processes.remove(&pid);
                     }
-                    _ => None,
-                })
+                }
+
+                self.threads.remove(&tid);
+                self.quanta.remove(&tid);
+
+                Ok(ret)
             }
         }
     }
 
     /// Returns the ID and a pointer to the `Context` of the next thread.
     fn resume<'a>(&'a mut self, saved_ctx: &'a Context) -> &'a Context {
-        match self.current() {
+        match self.get_current() {
             // Coming from a running thread
             Some(current) => {
-                let state = current.state;
+                let state = current.state();
                 let time_reached = self.time_reached();
 
                 match (state, time_reached) {
@@ -200,15 +256,13 @@ impl Executor {
                         // Add the thread to the back of the queue if it's running
                         // Update the current thread
                         let thread = self.current_mut().unwrap();
-                        thread.state = ThreadState::Ready;
-                        unsafe {
-                            thread.save_context(saved_ctx);
-                        }
+                        thread.set_state(ThreadState::Ready);
+                        thread.save_context(saved_ctx);
 
                         // Move to the next thread
                         let next = self.update_and_get_next();
-                        trace!("Swap to thread {}", next.tid);
-                        &next.context
+                        trace!("Swap to thread {}", next.tid());
+                        next.context()
                     }
                     // Thread is running and still has time left
                     (ThreadState::Running, false) => {
@@ -225,10 +279,16 @@ impl Executor {
             // First time polling for next thread or a thread just finished
             None => {
                 let next = self.update_and_get_next();
-                trace!("Swap to thread {}", next.tid);
-                &next.context
+                trace!("Swap to thread {}", next.tid());
+                next.context()
             }
         }
+    }
+
+    fn add_thread(&mut self, tid: usize, thread: Thread) {
+        self.threads.insert(tid, thread);
+        self.quanta.insert(tid, 0);
+        self.scheduler.add_new(tid);
     }
 
     /// Returns whether the current thread has reached its quanta limit, false
@@ -257,17 +317,22 @@ impl Executor {
     }
 
     /// Returns a reference to the currently running thread.
-    fn current(&self) -> Option<&Thread> {
+    fn get_current(&self) -> Option<&Thread> {
         self.scheduler
             .current()
             .and_then(|tid| self.threads.get(&tid))
+    }
+
+    /// Get a mutable reference to a thread with an ID.
+    fn get_mut(&mut self, tid: usize) -> Option<&mut Thread> {
+        self.threads.get_mut(&tid)
     }
 
     /// Returns a mutable reference to the currently running thread.
     fn current_mut(&mut self) -> Option<&mut Thread> {
         self.scheduler
             .current()
-            .and_then(move |tid| self.threads.get_mut(&tid))
+            .and_then(move |tid| self.get_mut(tid))
     }
 
     /// Get the next thread from the scheduler and update its state.
@@ -282,13 +347,13 @@ impl Executor {
             .get_mut(&next_tid)
             .unwrap_or_else(|| panic!("no such thread {}", next_tid));
 
-        thread.state = ThreadState::Running;
+        thread.set_state(ThreadState::Running);
         thread
     }
 
     /// Register a thread as having returned and save its return value; keep it
     /// around until it is joined and reaped.
-    fn register_return(&mut self, ret: usize) {
+    fn exit(&mut self, status: isize) {
         let curr_tid = self
             .scheduler
             .current()
@@ -301,7 +366,8 @@ impl Executor {
             .get_mut(&curr_tid)
             .unwrap_or_else(|| panic!("no such thread {}", curr_tid));
 
-        curr.ret = ret;
-        curr.state = ThreadState::Finished;
+        info!("Exit thread {} with status {}", curr, status);
+
+        curr.exit(status);
     }
 }

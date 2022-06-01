@@ -1,4 +1,13 @@
-use halogen_common::mem::{Address, PhysicalAddress, KIB};
+//! This module provides an interface to the platform level interrupt controller
+//! (PLIC). This PLIC can be used to poll for and handle external interrupts.
+//!
+//! When there is an external interrupt, the hart will receive a supervisor
+//! external interrupt. It should then check the PLIC to get the highest
+//! priority IRQ. To handle the request, the hart will place a claim
+//! on that IRQ, handle the request, mark it as completed, and finally return
+//! from the trap handler.
+
+use halogen_common::mem::{Address, PhysicalAddress, VirtualAddress, KIB};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -6,7 +15,7 @@ use crate::{
     critical_section,
     mem::{
         io::PLIC_BASE,
-        paging::{map, Permissions},
+        paging::{map, Permissions, Privilege, Scope},
     },
 };
 
@@ -20,7 +29,7 @@ const PRIORITY_MAX: u32 = 7;
 static mut ISRS: [Option<InterruptRoutine>; ISR_COUNT] = [None; ISR_COUNT];
 
 lazy_static! {
-    static ref PLIC: Mutex<Plic> = unsafe { Mutex::new(Plic::new(PLIC_BASE)) };
+    static ref PLIC: Mutex<Plic> = unsafe { Mutex::new(Plic::from_phys(PLIC_BASE)) };
 }
 
 /// Register a function as the interrupt service routine for a given interrupt
@@ -33,24 +42,18 @@ pub fn register_isr(irq: usize, isr: InterruptRoutine) {
 
 /// Enable an interrupt source on the calling hart's context.
 pub fn set_enabled(irq: usize, enabled: bool) {
-    critical_section! {
-        PLIC.lock().set_enabled(0, irq, enabled);
-    }
+    critical_section!({ PLIC.lock().set_enabled(0, irq, enabled) });
 }
 
 /// Set the priority of an interrupt source on the calling hart's context.
 pub fn set_priority(irq: usize, priority: u32) {
     assert!(priority < PRIORITY_MAX);
-    critical_section! {
-        PLIC.lock().set_priority(irq, priority);
-    }
+    critical_section!({ PLIC.lock().set_priority(irq, priority) });
 }
 
 /// Set interrupt priority threshold for the calling hart's context.
 pub fn set_threshold(threshold: u32) {
-    critical_section! {
-        PLIC.lock().set_threshold(0, threshold);
-    }
+    critical_section!({ PLIC.lock().set_threshold(0, threshold) });
 }
 
 /// Handle the next pending external interrupt mark it as complete. Returns
@@ -93,7 +96,8 @@ unsafe impl Sync for Plic {}
 unsafe impl Send for Plic {}
 
 impl Plic {
-    unsafe fn new(base: PhysicalAddress) -> Plic {
+    /// Map the PLIC at the base physical address.
+    unsafe fn from_phys(base: PhysicalAddress) -> Plic {
         // For each section (priorites, enables, etc.) map the MMIO address and create a
         // slice
         let priorities = map(
@@ -101,45 +105,60 @@ impl Plic {
             Some(base.add_offset(PRIORITIES_OFFSET)),
             PRIORITIES_LEN,
             Permissions::ReadWrite,
+            Scope::Global,
+            Privilege::Kernel,
         )
-        .expect("failed to map PLIC priorities")
-        .as_mut_ptr();
+        .expect("failed to map PLIC priorities");
 
         let pending = map(
             None,
             Some(base.add_offset(PENDING_OFFSET)),
             PENDING_LEN,
             Permissions::ReadOnly,
+            Scope::Global,
+            Privilege::Kernel,
         )
-        .expect("failed to map PLIC pending")
-        .as_mut_ptr();
+        .expect("failed to map PLIC pending");
 
         let enables = map(
             None,
             Some(base.add_offset(ENABLES_OFFSET)),
             ENABLES_LEN,
             Permissions::ReadWrite,
+            Scope::Global,
+            Privilege::Kernel,
         )
-        .expect("failed to map PLIC enables")
-        .as_mut_ptr();
+        .expect("failed to map PLIC enables");
 
         let contexts = map(
             None,
             Some(base.add_offset(CONTEXT_OFFSET)),
             CONTEXT_LEN,
             Permissions::ReadWrite,
+            Scope::Global,
+            Privilege::Kernel,
         )
-        .expect("failed to map PLIC enables")
-        .as_mut_ptr();
+        .expect("failed to map PLIC enables");
 
+        Plic::from_virt(priorities, pending, enables, contexts)
+    }
+
+    /// Construct a PLIC from mapped regions.
+    unsafe fn from_virt(
+        priorities: VirtualAddress,
+        pending: VirtualAddress,
+        enables: VirtualAddress,
+        contexts: VirtualAddress,
+    ) -> Plic {
         Plic {
-            priorities,
-            pending,
-            enables,
-            contexts,
+            priorities: priorities.as_mut_ptr(),
+            pending: pending.as_mut_ptr(),
+            enables: enables.as_mut_ptr(),
+            contexts: contexts.as_mut_ptr(),
         }
     }
 
+    /// Enable an interrupt source on hart.
     fn set_enabled(&self, hart: usize, irq: usize, enabled: bool) {
         // Two
         let index = (irq & 0xFFFF_FF00) >> 8;
@@ -157,7 +176,7 @@ impl Plic {
         }
     }
 
-    /// Set the priority for an interrupt
+    /// Set the priority for an interrupt source.
     fn set_priority(&self, irq: usize, priority: u32) {
         unsafe {
             (self.priorities as *mut u32)
@@ -166,12 +185,14 @@ impl Plic {
         }
     }
 
+    /// Set the priority threshold for a hart.
     fn set_threshold(&self, hart: usize, threshold: u32) {
         unsafe {
             ((self.contexts as *mut [u8; 4 * KIB]).add(hart) as *mut u32).write_volatile(threshold);
         }
     }
 
+    /// Claim an interrupt for a hart.
     fn claim(&self, hart: usize) -> Option<u32> {
         unsafe {
             match ((self.contexts as *mut [u8; 4 * KIB]).add(hart) as *mut u32)
@@ -184,6 +205,7 @@ impl Plic {
         }
     }
 
+    /// Complete an interrupt on a hart.
     fn complete(&self, hart: usize, isr: u32) {
         unsafe {
             ((self.contexts as *mut [u8; 4 * KIB]).add(hart) as *mut u32)

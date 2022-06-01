@@ -3,7 +3,7 @@ use halogen_common::mem::{Address, PhysicalAddress, Segment};
 use crate::{
     io::console::early_println,
     mem::{
-        paging::{map, root_satp, Permissions, PAGING_ENABLED},
+        paging::{get_root_satp, map, Permissions, Privilege, Scope, PAGING_ENABLED},
         phys,
         regions::{
             FREE_SIZE, KERNEL_SPACE_START, PHYSICAL_BASE, PHYSICAL_SIZE, RODATA_SIZE, RWDATA_SIZE,
@@ -106,52 +106,45 @@ unsafe extern "C" fn enable_paging(_hart_id: usize, _device_tree: *const u8) -> 
 
     // Map the kernel text.
     map(
-        Some(__text.address().add_offset(virt_offset as isize).as_virt()),
+        Some(__text.address().add_offset(virt_offset).as_virt()),
         Some(__text.address()),
         TEXT_SIZE,
         Permissions::ReadExecute,
+        Scope::Global,
+        Privilege::Kernel,
     )
     .unwrap();
 
     // Map the read-only data.
     map(
-        Some(
-            __ro_data
-                .address()
-                .add_offset(virt_offset as isize)
-                .as_virt(),
-        ),
+        Some(__ro_data.address().add_offset(virt_offset).as_virt()),
         Some(__ro_data.address()),
         RODATA_SIZE,
         Permissions::ReadOnly,
+        Scope::Global,
+        Privilege::Kernel,
     )
     .unwrap();
 
     // Map the read-write data.
     map(
-        Some(
-            __rw_data
-                .address()
-                .add_offset(virt_offset as isize)
-                .as_virt(),
-        ),
+        Some(__rw_data.address().add_offset(virt_offset).as_virt()),
         Some(__rw_data.address()),
         RWDATA_SIZE,
         Permissions::ReadWrite,
+        Scope::Global,
+        Privilege::Kernel,
     )
     .unwrap();
 
     // Map the rest of the physical memory.
     map(
-        Some(
-            __rw_data_end
-                .address()
-                .add_offset(virt_offset as isize)
-                .as_virt(),
-        ),
+        Some(__rw_data_end.address().add_offset(virt_offset).as_virt()),
         Some(__rw_data_end.address()),
         FREE_SIZE,
         Permissions::ReadWrite,
+        Scope::Global,
+        Privilege::Kernel,
     )
     .unwrap();
 
@@ -162,12 +155,12 @@ unsafe extern "C" fn enable_paging(_hart_id: usize, _device_tree: *const u8) -> 
 
     early_println("Enable paging\n");
 
-    // Set the MXR bit.
+    // Set the MXR bit so executable pages are readable.
     riscv::register::sstatus::set_mxr();
 
-    let satp: usize = root_satp();
+    let satp: usize = get_root_satp();
     let gp: usize = read_reg!(gp) + virt_offset as usize;
-    let sp: usize = (__tmp_stack_top.address().add_offset(virt_offset as isize)).into();
+    let sp: usize = (__tmp_stack_top.address().add_offset(virt_offset)).into();
 
     // Set stvec interrupt vector to kmain.
     let kinit = crate::kinit as usize + virt_offset as usize;

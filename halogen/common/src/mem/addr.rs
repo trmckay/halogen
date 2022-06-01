@@ -53,6 +53,10 @@ pub trait Address:
         Self::from(base.wrapping_add(offset as usize))
     }
 
+    fn from_ref<T>(rf: &T) -> Self {
+        Self::from(core::ptr::addr_of!(*rf) as usize)
+    }
+
     /// Create an `Address` from a pointer.
     fn from_ptr<T>(ptr: *const T) -> Self {
         Self::from(ptr as usize)
@@ -71,7 +75,7 @@ impl Address for usize {
 }
 
 /// A virtual address (39-bits, fits in a `usize`).
-#[derive(Copy, Clone, Address)]
+#[derive(Copy, Clone, Address, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VirtualAddress(pub usize);
 
 impl VirtualAddress {
@@ -85,7 +89,7 @@ impl VirtualAddress {
 }
 
 /// A physical address (54-bits, fits in a `usize`).
-#[derive(Copy, Clone, Address)]
+#[derive(Copy, Clone, Address, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysicalAddress(pub usize);
 
 impl PhysicalAddress {
@@ -197,6 +201,10 @@ impl<T: Address> Segment<T> {
             start: T::from(align_up!(self.start.into(), align)),
             end: self.end,
         }
+    }
+
+    pub fn iter(&self) -> core::ops::Range<usize> {
+        self.start.into()..self.end.into()
     }
 }
 

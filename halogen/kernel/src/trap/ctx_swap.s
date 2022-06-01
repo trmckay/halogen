@@ -1,13 +1,15 @@
-# 1. Disable interrupts (this is the locking mechanism for the memory at `sscratch`)
-# 2. Store the CPU context at the pointer in `sscratch`
-# 3. Use the space after the CPU context as a temporary stack
-# 4. Restore the original value of `sscratch`
-# 5. Call the Rust handler with the correct arguments
-# 6. Configure the trap return based on the next context
-# 7. Load the next context
-# 8. Execute the trap return
+# 1. Disable interrupts (this is the locking mechanism for the memory at `sscratch`).
+# 2. Store the CPU context at the pointer in `sscratch`.
+# 3. Use the space after the CPU context as a temporary stack.
+# 4. Restore the original value of `sscratch`.
+# 5. Call the Rust handler with the correct arguments.
+# 6. Configure the trap return based on the next context.
+# 7. Load the next context.
+# 8. Execute the trap return.
 
-# See `context.rs` for the structure definition
+.equ SSTATUS_SPP, (1 << 8)
+
+# See `context.rs` for the structure definition.
 .equ CTX_REG_ARR_COUNT, 31
 .equ CTX_REG_ARR_ELEM_SIZE, 8
 .equ CTX_REG_ARR_OFFST, 0
@@ -19,21 +21,24 @@
 .equ CTX_PRIV_SIZE, 8
 .equ CTX_PRIV_OFFST, CTX_PC_OFFST + CTX_PC_SIZE
 
-.equ CTX_STRUCT_SIZE, CTX_PRIV_OFFST + CTX_PRIV_SIZE
+.equ CTX_SATP_SIZE, 8
+.equ CTX_SATP_OFFST, CTX_PRIV_OFFST + CTX_PRIV_SIZE
+
+.equ CTX_STRUCT_SIZE, CTX_SATP_OFFST + CTX_SATP_SIZE
 
 csrci sstatus, 1
 
-# Can't lose the value of sscratch or any of the registers
+# Can't lose the value of sscratch or any of the registers.
 
-# Swap sp with sscratch storage
-# The old sp is safe in sscratch
+# Swap sp with sscratch storage.
+# The old sp is safe in sscratch.
 csrrw sp, sscratch, sp
 
 # The sscratch value is now in sp and can go in the sp's spot for now:
 # ctx.regs[1] i.e. sp - CTX_STRUCT_SIZE + CTX_REG_ARR_ELEM_SIZE
 sd sp, (-CTX_STRUCT_SIZE + CTX_REG_ARR_ELEM_SIZE)(sp)
 
-# Adjust the stack pointer now that we've saved it
+# Adjust the stack pointer now that we've saved it.
 # sp <- &regs
 addi sp, sp, -CTX_STRUCT_SIZE
 
@@ -69,23 +74,30 @@ sd x29, (CTX_REG_ARR_OFFST + 28 * CTX_REG_ARR_ELEM_SIZE)(sp)
 sd x30, (CTX_REG_ARR_OFFST + 29 * CTX_REG_ARR_ELEM_SIZE)(sp)
 sd x31, (CTX_REG_ARR_OFFST + 30 * CTX_REG_ARR_ELEM_SIZE)(sp)
 
-# Now that we've saved all the registers, use temporaries to save sscratch and the old sp
+# Now that we've saved all the registers, use temporaries to save sscratch and the old sp.
 
-# Get the old sscratch that was saved in the sp's spot on the array
+# Get the old sscratch that was saved in the sp's spot on the array.
 ld t0, (CTX_REG_ARR_OFFST + 1 * CTX_REG_ARR_ELEM_SIZE)(sp)
 
-# Swap sscratch (holds the old sp) with t0 (holds the old sscratch)
+# Swap sscratch (holds the old sp) with t0 (holds the old sscratch).
 csrrw t0, sscratch, t0
-# Put t0 (now holds the old sp) in the register array
+# Put t0 (now holds the old sp) in the register array.
 sd t0, (CTX_REG_ARR_OFFST + 1 * CTX_REG_ARR_ELEM_SIZE)(sp)
 
-# Now store the pc and privilege level
+# Now store the pc.
 csrr t0, sepc
 sd t0, (CTX_PC_OFFST)(sp)
 
-# TODO: actual read privilege value
-li t0, 1
+# Read and store the previous privilege level.
+# t0 <- 0 if user, 1 if supervisor
+csrr t0, sstatus
+andi t0, t0, SSTATUS_SPP
+sgtu t0, t0, zero
 sd t0, (CTX_PRIV_OFFST)(sp)
+
+# Read and store the satp.
+csrr t0, satp
+sd t0, (CTX_SATP_OFFST)(sp)
 
 # a0: *const Context <- trap_handler(&regs, scause, stval)
 mv a0, sp
@@ -95,14 +107,23 @@ call trap_handler
 
 # sepc <- return pc
 ld t0, (CTX_PC_OFFST)(a0)
-csrrw t0, sepc, t0
+csrw sepc, t0
 
-# Configure trap return
-# TODO: respect return privilege level
+# Configure return privilege.
 ld t0, (CTX_PRIV_OFFST)(a0)
-csrs sstatus, t0
+li t1, SSTATUS_SPP
+beqz t0, 1f
+csrs sstatus, t1
+j 2f
+1:
+csrc sstatus, t1
+2:
 
-# Load next register context
+# Load satp.
+ld t0, (CTX_SATP_OFFST)(a0)
+csrw satp, t0
+
+# Load next register context.
 ld x1,  (CTX_REG_ARR_OFFST + 0  * CTX_REG_ARR_ELEM_SIZE)(a0)
 ld x2,  (CTX_REG_ARR_OFFST + 1  * CTX_REG_ARR_ELEM_SIZE)(a0)
 ld x3,  (CTX_REG_ARR_OFFST + 2  * CTX_REG_ARR_ELEM_SIZE)(a0)
@@ -135,5 +156,6 @@ ld x30, (CTX_REG_ARR_OFFST + 29 * CTX_REG_ARR_ELEM_SIZE)(a0)
 ld x31, (CTX_REG_ARR_OFFST + 30 * CTX_REG_ARR_ELEM_SIZE)(a0)
 ld a0,  (CTX_REG_ARR_OFFST + 9  * CTX_REG_ARR_ELEM_SIZE)(a0)
 
-# Return from the trap/interrupt/exception
+# Return from the trap/interrupt/exception.
+sfence.vma zero, zero
 sret

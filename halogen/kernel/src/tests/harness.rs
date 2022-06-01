@@ -15,7 +15,7 @@ where
 {
     fn run(&self) {
         kprintln!("---");
-        kprintln!("{}...", core::any::type_name::<T>().fg::<colors::Cyan>());
+        kprintln!("{}", core::any::type_name::<T>().fg::<colors::Cyan>());
 
         self();
 
@@ -32,7 +32,5 @@ pub fn run_tests(tests: &[&dyn TestCase]) -> ! {
 
     kprintln!("---\n\nAll tests passed");
 
-    unsafe {
-        shutdown(Reason::None);
-    }
+    shutdown(Reason::None);
 }

@@ -1,7 +1,5 @@
 /// Make a call to firmware with the SBI ABI.
 pub(self) mod call;
-/// Error enums for SBI.
-pub(self) mod error;
 
 /// Firmware console implementation.
 pub mod console;

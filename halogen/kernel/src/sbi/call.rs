@@ -1,8 +1,6 @@
-use super::error::SbiError;
-
 /// Make a call to the supporting environment, an M-mode firmware that
 /// implements the SBI spec.
-pub fn sbi_ecall(ext: usize, func: usize, args: [usize; 6]) -> Result<usize, SbiError> {
+pub fn sbi_ecall(ext: usize, func: usize, args: [usize; 6]) -> usize {
     let ret_code: isize;
     let val: usize;
 
@@ -22,9 +20,6 @@ pub fn sbi_ecall(ext: usize, func: usize, args: [usize; 6]) -> Result<usize, Sbi
         );
     }
 
-    if ret_code < 0 {
-        Err(SbiError::from(ret_code))
-    } else {
-        Ok(val)
-    }
+    assert!(ret_code >= 0);
+    val
 }

@@ -60,11 +60,14 @@ macro_rules! region {
 //
 // TODO: This could be done nicely with a TT-muncher macro.
 
+// These four regions create a linear mapping of the physical memory.
 region!(IMAGE_TEXT, KERNEL_SPACE_START, unsafe { TEXT_SIZE });
 region!(IMAGE_RO, IMAGE_TEXT.end, unsafe { RODATA_SIZE });
 region!(IMAGE_RW, IMAGE_RO.end, unsafe { RWDATA_SIZE });
 region!(FRAME_ALLOC, IMAGE_RW.end, unsafe { FREE_SIZE });
-region!(STACK, IMAGE_RW.end, STACK_SIZE);
+
+// The rest of the regions are not necessarily backed by physical memory.
+region!(STACK, FRAME_ALLOC.end, STACK_SIZE);
 region!(HEAP, STACK.end, HEAP_SIZE);
 region!(VIRT_SPACE, HEAP.end, VirtualAddress(usize::MAX) - HEAP.end);
 

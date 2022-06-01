@@ -5,7 +5,7 @@ use halogen_common::mem::{Address, VirtualAddress};
 use super::console::register_console;
 use crate::mem::{
     io::{UART_BASE, UART_SIZE},
-    paging::{map, Permissions},
+    paging::{map, Permissions, Privilege, Scope},
 };
 
 const UART_IRQ: usize = 10;
@@ -23,7 +23,15 @@ const SCRATCH_OFFSET: usize = 7;
 pub fn use_as_console() {
     unsafe {
         register_console(Box::new(Ns16550aUart::new(
-            map(None, Some(UART_BASE), UART_SIZE, Permissions::ReadWrite).unwrap(),
+            map(
+                None,
+                Some(UART_BASE),
+                UART_SIZE,
+                Permissions::ReadWrite,
+                Scope::Global,
+                Privilege::Kernel,
+            )
+            .unwrap(),
         )));
     }
 }

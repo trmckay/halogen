@@ -9,7 +9,7 @@ use spin::Mutex;
 use crate::{
     fwprintln, kprintln,
     mem::{
-        paging::{map, Permissions},
+        paging::{map, Permissions, Privilege, Scope},
         regions::HEAP,
     },
 };
@@ -37,7 +37,15 @@ impl HeapAllocator {
     /// back `init_size` bytes with physical frames.
     unsafe fn init(&mut self, segment: Segment<VirtualAddress>, init_size: usize) {
         assert!(init_size <= segment.size());
-        map(Some(segment.start), None, init_size, Permissions::ReadWrite).unwrap();
+        map(
+            Some(segment.start),
+            None,
+            init_size,
+            Permissions::ReadWrite,
+            Scope::Global,
+            Privilege::Kernel,
+        )
+        .unwrap();
         self.allocator = Mutex::new(Some(FreeListAllocator::new(segment.as_mut_slice())));
     }
 }

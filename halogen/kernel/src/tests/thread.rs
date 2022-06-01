@@ -6,7 +6,7 @@ fn get_tid() {
 }
 
 /// Exponentially multithreaded Fibonacci implementation
-extern "C" fn fib(n: usize) -> usize {
+extern "C" fn fib(n: usize) -> isize {
     match n {
         0 | 1 => 1,
         n => {
@@ -23,14 +23,14 @@ extern "C" fn fib(n: usize) -> usize {
 
 /// A fast iterator-based approach to check against
 struct FibIterator {
-    curr: usize,
-    next: usize,
+    curr: isize,
+    next: isize,
 }
 
 impl Iterator for FibIterator {
-    type Item = usize;
+    type Item = isize;
 
-    fn next(&mut self) -> Option<usize> {
+    fn next(&mut self) -> Option<isize> {
         let next = self.curr + self.next;
         let prev = self.curr;
         self.curr = self.next;

@@ -60,12 +60,12 @@ macro_rules! read_csr {
 /// Disable interrupts for a block statement.
 #[macro_export]
 macro_rules! critical_section {
-    { $($stmt:stmt)+ } => {
+    ($blk:block) => {
         #[allow(redundant_semicolons)]
         {
             #[allow(unused_unsafe)]
             let _cs = unsafe { riscv::interrupt::CriticalSection::new() };
-            $($stmt)*
+            $blk
         }
     };
 }

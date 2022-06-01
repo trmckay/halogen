@@ -17,5 +17,4 @@ steps:
     - name: test
       image: trmckay/rust-riscv
       commands:
-          - cargo xtask test 2>&1 | tee /tmp/halogen-test.out
-          - if ! egrep -q '^Shutdown due to error' /tmp/halogen-test.out; then true; else false; fi
+          - cargo xtask test

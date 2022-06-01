@@ -9,6 +9,7 @@ use crate::{
     mem::{regions::Region, Stack},
     read_csr,
     sbi::reset::{shutdown, Reason},
+    syscall::handle_syscall,
     task::{executor::timer_event, resume},
 };
 
@@ -22,7 +23,7 @@ pub unsafe fn init() {
     info!("Initialize trap handler");
     riscv::register::stvec::write(trap_shim as usize, riscv::register::stvec::TrapMode::Direct);
 
-    let stack = Stack::new(24 * KIB).expect("failed to allocate trap stack");
+    let stack = Stack::try_new_kernel(24 * KIB).expect("failed to allocate trap stack");
     riscv::register::sscratch::write(stack.top() as usize);
 }
 
@@ -119,11 +120,11 @@ pub unsafe extern "C" fn early_trap() -> ! {
     shutdown(Reason::Failure);
 }
 
-/// Save the context and call trap handler
+/// Save the context and call trap handler.
 #[repr(align(4))]
 #[naked]
 unsafe extern "C" fn trap_shim() -> ! {
-    core::arch::asm!(include_str!("save_ctx.s"), options(noreturn));
+    core::arch::asm!(include_str!("ctx_swap.s"), options(noreturn));
 }
 
 fn dump_ctx(ctx: &Context, scause: TrapCause, stval: usize) {
@@ -137,17 +138,15 @@ fn dump_ctx(ctx: &Context, scause: TrapCause, stval: usize) {
     fwprintln!("{}", ctx);
 }
 
-/// Handle the trap/interrupt/exception
-///
-/// Returns a `Context` which contains the general purpose registers, calling
-/// environment, and program counter
+/// Handle the trap/interrupt/exception. Returns a `Context` which contains the
+/// general purpose registers, calling environment, and program counter.
 #[no_mangle]
 unsafe extern "C" fn trap_handler(
-    ctx: *const Context,
+    ctx: *mut Context,
     scause: usize,
     stval: usize,
 ) -> *const Context {
-    let ctx = ctx.as_ref().unwrap();
+    let ctx = ctx.as_mut().unwrap();
     let scause: TrapCause = scause.into();
 
     match scause {
@@ -157,6 +156,7 @@ unsafe extern "C" fn trap_handler(
         TrapCause::SupervisorTimer => {
             timer_event();
         }
+        TrapCause::UserCall => handle_syscall(ctx),
         _ => {
             // TODO: Don't just panic; kill the current thread if it isn't TID=0
             dump_ctx(ctx, scause, stval);

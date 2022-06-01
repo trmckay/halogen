@@ -1,20 +1,18 @@
-use crate::{error::KernelError, mem::paging::PageTable};
+use crate::mem::paging::PageTable;
 
 /// A virtual address space isolated to a single process.
-pub struct AddressSpace<'a> {
-    id: usize,
-    root: &'a mut PageTable,
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AddressSpace {
+    pub id: usize,
+    pub root: PageTable,
 }
 
-impl<'a> AddressSpace<'a> {
-    /// Create a new `AddressSpace`.
-    pub fn new(_id: usize) -> Option<AddressSpace<'a>> {
-        todo!()
-    }
-
-    /// Populates memory regions with the loadable contents of an ELF
-    /// executable.
-    pub fn load_elf(&mut self, _bytes: &[u8]) -> Result<(), KernelError> {
-        todo!()
+impl AddressSpace {
+    /// Create a new `AddressSpace` populated with the kernel mappings.
+    pub fn new(id: usize) -> AddressSpace {
+        AddressSpace {
+            id,
+            root: PageTable::from_kernel_root(),
+        }
     }
 }

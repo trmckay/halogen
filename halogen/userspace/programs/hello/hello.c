@@ -1,8 +1,8 @@
 #include "lib.h"
 
-void _start(void) {
-    const char *hello = "hello\n";
-    unsigned long n = 6;
+static const char *message = "Hello from userspace!\n";
 
-    print(hello, 6);
+int main(void) {
+    print(message, 22);
+    return -1;
 }

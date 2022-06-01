@@ -1,7 +1,13 @@
 /// Process and thread execution.
 pub mod executor;
 
-/// Kernel thread structure.
-pub mod thread;
+/// Userspace processes and threads.
+pub mod process;
 
-pub use executor::{join, resume, spawn, tid, yld};
+/// Kernel thread structure.
+mod thread;
+
+/// Load ELF binaries.
+mod loader;
+
+pub use executor::{exec, exit, join, resume, spawn, tid, yld};

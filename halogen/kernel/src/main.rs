@@ -81,7 +81,7 @@ pub unsafe extern "C" fn kinit() -> ! {
 }
 
 /// Main thread for the kernel.
-extern "C" fn kmain(_: usize) -> usize {
+extern "C" fn kmain(_: usize) -> isize {
     #[cfg(test)]
     crate::test_harness();
 

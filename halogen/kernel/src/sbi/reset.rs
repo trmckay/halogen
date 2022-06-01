@@ -27,14 +27,13 @@ impl From<Reason> for usize {
 /// propogate the exit code to the shell.
 pub fn shutdown(reason: Reason) -> ! {
     match reason {
-        Reason::None => early_println("\nShutdown"),
-        Reason::Failure => early_println("\nShutdown due to error"),
+        Reason::None => early_println("Shutdown"),
+        Reason::Failure => early_println("Shutdown due to error"),
     }
     sbi_ecall(
         RESET_EXT_ID,
         RESET_FN_ID,
         [SHUTDOWN, reason.into(), 0, 0, 0, 0],
-    )
-    .expect("failed to make sbi call for shutdown");
+    );
     unreachable!()
 }
