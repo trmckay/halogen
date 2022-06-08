@@ -17,10 +17,10 @@ impl core::fmt::Display for Level {
             f,
             "{}",
             match &self {
-                Level::Trace => "TRACE",
-                Level::Info => "INFO ",
-                Level::Warn => "WARN ",
-                Level::Error => "ERROR",
+                Level::Trace => "[TRACE]",
+                Level::Info => "[INFO] ",
+                Level::Warn => "[WARN] ",
+                Level::Error => "[ERROR]",
             }
         )
     }
@@ -64,9 +64,7 @@ macro_rules! log {
                 $crate::fwprintln!(
                     "{}",
                     format_args!(
-                        "{:.04} | {:>5} | {}",
-                        riscv::register::time::read() as f64 /
-                            ($crate::arch::TIMER_FREQ_HZ as f64 / 1000.0),
+                        "{} {}",
                         $level,
                         format_args!($($arg)*)
                     ).style(style)

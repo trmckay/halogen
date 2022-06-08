@@ -1,8 +1,12 @@
 #include "lib.h"
 
-static const char *message = "Hello from userspace!\n";
 
 int main(void) {
-    print(message, 22);
+    char message[21] = "Hello from process ?\n";
+
+    for (;;) {
+        message[19] = pid() + 0x30;
+        print(message, 22);
+    }
     return -1;
 }

@@ -19,8 +19,10 @@ typedef unsigned long long int u128;
 
 #define SYSCALL_EXIT 0
 #define SYSCALL_PRINT 1
+#define SYSCALL_PID 2
 
 void print(const char *str, i64 len);
 void exit(i64 code);
+u64 pid(void);
 
 #endif

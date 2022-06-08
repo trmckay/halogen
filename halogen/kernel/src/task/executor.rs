@@ -21,7 +21,7 @@ use crate::{
 /// Number of time slices each thread gets before being descheduled.
 pub const DEFAULT_QUANTA_LIMIT: usize = 4;
 /// Length of a single time slice.
-pub const DEFAULT_QUANTUM_US: usize = 250_000;
+pub const DEFAULT_QUANTUM_US: usize = 100000;
 
 lazy_static! {
     static ref EXECUTOR: Mutex<Executor> = Mutex::new(Executor::default());
@@ -134,6 +134,15 @@ pub fn tid() -> usize {
         .scheduler
         .current()
         .expect("no thread running")
+}
+
+pub fn pid() -> Option<usize> {
+    EXECUTOR.lock().get_current().and_then(|thread| {
+        match thread {
+            Thread::Kernel(_) => None,
+            Thread::User(ut) => Some(ut.pid),
+        }
+    })
 }
 
 /// Coordinates execution and scheduling of processes and kernel threads.

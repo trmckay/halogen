@@ -7,6 +7,7 @@ mod task;
 pub enum Function {
     Exit,
     Print,
+    Pid,
     Invalid,
 }
 
@@ -15,6 +16,7 @@ impl From<usize> for Function {
         match n {
             0 => Function::Exit,
             1 => Function::Print,
+            2 => Function::Pid,
             _ => Function::Invalid,
         }
     }
@@ -45,6 +47,7 @@ pub unsafe extern "C" fn handle_syscall(ctx: &mut Context) {
     let ret = match syscall_fn {
         Function::Exit => task::syscall_exit(a1 as isize),
         Function::Print => print::syscall_print(a1 as *const u8, a2),
+        Function::Pid => task::syscall_pid(),
         Function::Invalid => -1,
     };
 

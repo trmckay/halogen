@@ -2,11 +2,12 @@ use halogen_common::mem::{Address, VirtualAddress};
 use halogen_programs::HELLO;
 
 use crate::{
+    kprintln,
     mem::{
         paging::{map, translate, PageTable, Permissions, Privilege, Scope, PAGE_SIZE},
         regions::IMAGE_TEXT,
     },
-    task::{executor::exec, join, process::Process},
+    task::{executor::exec, join, process::Process, spawn, tid, yld},
 };
 
 #[test_case]
@@ -67,9 +68,15 @@ fn create_main() {
     let _ = proc.create_main(172).unwrap();
 }
 
+extern "C" fn kernel_thread(_: usize) -> isize {
+    loop {
+        kprintln!("Hello from kernel thread {}", tid());
+        yld();
+    }
+}
+
 #[test_case]
-fn exec() {
-    let (_, tid) = exec(HELLO).expect("failed to exec");
-    let status = join(tid).expect("failed to join on user thread");
-    assert_eq!(-1, status);
+fn demo() {
+    exec(HELLO).expect("failed to exec");
+    spawn(kernel_thread, 0).expect("failed to spawn");
 }

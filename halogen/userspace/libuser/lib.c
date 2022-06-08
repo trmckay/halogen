@@ -23,3 +23,7 @@ void exit(i64 code) {
   syscall(SYSCALL_EXIT, code, 0, 0, 0);
   __asm__("unimp");
 };
+
+u64 pid(void) {
+    return syscall(SYSCALL_PID, 0, 0, 0, 0);
+}
