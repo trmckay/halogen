@@ -15,6 +15,10 @@ pub fn syscall_print(msg: *const u8, n: usize) -> isize {
         }
     };
 
+    unsafe {
+        riscv::register::sstatus::clear_sum();
+    }
+
     fwprint!("{}", msg);
 
     0

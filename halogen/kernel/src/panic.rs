@@ -19,10 +19,7 @@ unsafe fn panic(panic: &PanicInfo) -> ! {
             None => fwprint!("{} ", "no message".style(red)),
         }
         if let Some(location) = panic.location() {
-            fwprintln!(
-                "{}",
-                format_args!("-- {}:{}", location.file(), location.line()).style(red)
-            );
+            fwprintln!("{}", format_args!("-- {}", location).style(red));
         }
     } else {
         early_println("\nKernel panicked during bootstrap");

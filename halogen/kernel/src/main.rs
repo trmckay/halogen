@@ -70,13 +70,13 @@ pub unsafe extern "C" fn kinit() -> ! {
 
     trap::init();
 
-    // Until now, we've been using SBI calls to print
+    // Until now, we've been using SBI calls to print.
     io::uart::use_as_console();
 
-    // Setup and enable trap handler
+    // Setup and enable trap handler.
     irq::enable();
 
-    // Handoff execution to the thread scheduler
+    // Handoff execution to the thread scheduler.
     task::executor::handoff(kmain, 0);
 }
 
@@ -85,7 +85,7 @@ extern "C" fn kmain(_: usize) -> isize {
     #[cfg(test)]
     crate::test_harness();
 
-    // Enable external interrupts
+    // Enable external interrupts.
     irq::enable_external();
 
     sbi::reset::shutdown(sbi::reset::Reason::None);
