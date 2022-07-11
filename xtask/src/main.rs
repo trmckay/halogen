@@ -115,12 +115,11 @@ const RUSTC_TARGET: &str = "riscv64gc-unknown-none-elf";
 const SBI_DIR: &str = "opensbi";
 const KERNEL_DIR: &str = "halogen/kernel";
 const COMMON_LIB_DIR: &str = "halogen/common";
-const PROGRAMS_DIR: &str = "halogen/userspace/programs";
 const XTASK_DIR: &str = "xtask";
 const INCLUDE_PROGRAMS_DIR: &str = "halogen/userspace/include-programs";
 const BUILD_DIR: &str = "build";
 
-const CRATES: &[&str] = &[KERNEL_DIR, COMMON_LIB_DIR, INCLUDE_PROGRAMS_DIR, XTASK_DIR];
+const CRATES: &[&str] = &[KERNEL_DIR, COMMON_LIB_DIR, XTASK_DIR];
 
 const KERNEL_ELF_DEST: &str = "halogen.elf";
 const KERNEL_BIN_DEST: &str = "halogen.bin";
@@ -242,21 +241,6 @@ fn clean() -> Result<()> {
             "failed to cargo clean"
         )?;
     }
-    check_exit!(
-        cmd!("make", "clean").current_dir(SBI_DIR),
-        "failed to clean OpenSBI"
-    )?;
-    check_exit!(
-        cmd!(
-            "sh",
-            "-c",
-            &format!(
-                "find {} -type f -regex '.*\\.\\(o\\|elf\\|bin\\)$' -print0 | xargs -0 rm -f",
-                PROGRAMS_DIR
-            ),
-        ),
-        "failed to find and delete compiler artifacts"
-    )?;
     Ok(())
 }
 

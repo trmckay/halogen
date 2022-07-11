@@ -14,7 +14,9 @@ pub fn set(delay_us: usize) {
     let time = match delay_us {
         usize::MAX => usize::MAX,
         _ => {
-            trace!("Set timer +{} us", delay_us);
+            if delay_us > 0 {
+                trace!("Set timer +{} us", delay_us);
+            }
             riscv::register::time::read().wrapping_add(us_to_cycles(delay_us))
         }
     };
