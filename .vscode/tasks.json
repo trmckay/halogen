@@ -2,20 +2,100 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "type": "shell",
-            "command": "cargo xtask build",
-            "problemMatcher": [],
             "label": "Build",
+            "type": "shell",
+            "command": "env python3 build.py build",
+            "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
         },
         {
+            "label": "Build container",
             "type": "shell",
-            "command": "cargo xtask clean",
+            "command": "docker build -t riscv-rust docker && docker network create halogen_debug",
             "problemMatcher": [],
-            "label": "Clean"
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "env python3 build.py test",
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "QEMU",
+            "type": "shell",
+            "command": "env python3 build.py debug_server",
+            "hide": true,
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^Kernel panic: (.*) -- (.*):(\\d+):(\\d+)$",
+                    "message": 1,
+                    "file": 2,
+                    "line": 3,
+                    "column": 4
+                },
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/halogen/kernel"
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": " ",
+                    "endsPattern": "qemu-system-riscv64"
+                }
+            }
+        },
+        {
+            "label": "QEMU (Docker)",
+            "type": "shell",
+            "command": "docker run -it --rm --net halogen_debug --name halogen_qemu -v ${workspaceFolder}:/src -p 1234:1234 rust-riscv python3 build.py debug_server",
+            "hide": true,
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^Kernel panic: (.*) -- (.*):(\\d+):(\\d+)$",
+                    "message": 1,
+                    "file": 2,
+                    "line": 3,
+                    "column": 4
+                },
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/halogen/kernel"
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": " ",
+                    "endsPattern": "qemu-system-riscv64"
+                }
+            }
+        },
+        {
+            "label": "Debug",
+            "type": "shell",
+            "command": "riscv64-unknown-elf-gdb -n -nh -q ${workspaceFolder}/build/halogen-test.elf -ex 'target remote localhost:1234' -ex 'break kinit' -ex 'continue'",
+            "dependsOn": "QEMU",
+            "problemMatcher": [],
+        },
+        {
+            "label": "Debug (Docker)",
+            "type": "shell",
+            "command": "docker run -it --rm --net halogen_debug --name halogen_gdb -v ${workspaceFolder}:/src:ro rust-riscv gdb -n -nh -q /src/build/halogen-test.elf -ex 'target remote halogen_qemu:1234' -ex 'break kinit' -ex 'continue'",
+            "dependsOn": [
+                "QEMU (Docker)"
+            ],
+            "problemMatcher": [],
         },
     ]
 }
