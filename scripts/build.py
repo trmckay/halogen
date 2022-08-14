@@ -3,6 +3,7 @@
 import json
 import subprocess
 import os
+import re
 import sys
 from typing import List, Optional, Tuple
 import multiprocessing
@@ -122,7 +123,7 @@ def qemu(bios: str, kernel: str, debug: bool = False):
     ]
 
     if debug:
-        args = ["-S", "-s"] + args
+        args = "-S -s " + args
 
     cmd = [QEMU] + args
     print(" ".join(cmd))

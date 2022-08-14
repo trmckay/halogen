@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to debug server (CodeLLDB)",
+            "type": "lldb",
+            "request": "custom",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/build/halogen-test.elf"
+            ],
+            "initCommands": [
+                "gdb-remote localhost:1234",
+            ],
+        },
+    ],
+    "compounds": []
+}

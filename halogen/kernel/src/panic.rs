@@ -13,7 +13,7 @@ use crate::{
 unsafe fn panic(panic: &PanicInfo) -> ! {
     if PAGING_ENABLED {
         let red = Style::new().color(AnsiColors::Red);
-        fwprint!("{}", "Kernel panic: ".style(red.bold()));
+        fwprint!("{}", "\nKernel panic: ".style(red.bold()));
         match panic.message() {
             Some(args) => fwprint!("{} ", args.style(red)),
             None => fwprint!("{} ", "no message".style(red)),
