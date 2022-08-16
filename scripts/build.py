@@ -11,15 +11,21 @@ JOB_COUNT = multiprocessing.cpu_count()
 
 
 def step(in_dir: str, cmd: List[str], capture=False) -> Optional[Tuple[str, str]]:
-    cwd = os.getcwd()
-    os.chdir(in_dir)
-    if capture:
-        (stdout, stderr) = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
-        os.chdir(cwd)
-        return (stdout, stderr)
-    else:
-        subprocess.run(cmd, check=True)
-        os.chdir(cwd)
+    try:
+        cwd = os.getcwd()
+        os.chdir(in_dir)
+        if capture:
+            (stdout, stderr) = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE
+            ).communicate()
+            os.chdir(cwd)
+            return (stdout, stderr)
+        else:
+            subprocess.check_call(cmd)
+            os.chdir(cwd)
+    except subprocess.CalledProcessError:
+        print("\nError: {} ({})".format(" ".join(cmd), in_dir))
+        sys.exit(1)
 
 
 TASKS = {}
@@ -86,18 +92,29 @@ def strip(src: str, dest: str):
 
 
 def qemu(bios: str, kernel: str, debug: bool = False):
+    mem_mb = 512
+    smp = 1
+
     args = [
         "-machine",
         "virt",
         "-cpu",
         "rv64",
         "-m",
-        "512M",
+        f"{mem_mb}M",
         "-smp",
-        "1",
+        f"{smp}",
         "-nographic",
         "-serial",
         "mon:stdio",
+        "-d",
+        "guest_errors",
+        "-d",
+        "mmu",
+        "-d",
+        "int",
+        "-d",
+        "unimp",
         "--bios",
         bios,
         "--kernel",
@@ -107,7 +124,9 @@ def qemu(bios: str, kernel: str, debug: bool = False):
     if debug:
         args = ["-S", "-s"] + args
 
-    step(".", [QEMU] + args)
+    cmd = [QEMU] + args
+    print(" ".join(cmd))
+    step(".", cmd)
 
 
 @task
@@ -190,7 +209,6 @@ def clippy():
 @default_task
 def check():
     fmt_check()
-    build()
     test()
 
 
