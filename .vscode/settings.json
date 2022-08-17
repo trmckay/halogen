@@ -4,6 +4,6 @@
         "halogen/common/Cargo.toml",
         "halogen/kernel/Cargo.toml",
         "halogen/proc-macro/Cargo.toml",
-        "xtask/Cargo.toml",
-    ]
+    ],
+    "python.formatting.provider": "black"
 }
