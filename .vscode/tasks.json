@@ -4,7 +4,7 @@
         {
             "label": "Build",
             "type": "shell",
-            "command": "env python3 build.py build",
+            "command": "env python3 scripts/build build",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
@@ -24,7 +24,7 @@
         {
             "label": "Test",
             "type": "shell",
-            "command": "env python3 build.py test",
+            "command": "env python3 scripts/build test",
             "problemMatcher": [],
             "group": {
                 "kind": "test",
@@ -34,7 +34,7 @@
         {
             "label": "QEMU",
             "type": "shell",
-            "command": "env python3 build.py debug_server",
+            "command": "env python3 scripts/build debug_server",
             "hide": true,
             "isBackground": true,
             "problemMatcher": {
@@ -59,7 +59,7 @@
         {
             "label": "QEMU (Docker)",
             "type": "shell",
-            "command": "docker run -it --rm --net halogen_debug --name halogen_qemu -v ${workspaceFolder}:/src -p 1234:1234 rust-riscv python3 build.py debug_server",
+            "command": "docker run -it --rm --net halogen_debug --name halogen_qemu -v ${workspaceFolder}:/src -p 1234:1234 rust-riscv python3 build debug_server",
             "hide": true,
             "isBackground": true,
             "problemMatcher": {

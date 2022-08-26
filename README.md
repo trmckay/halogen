@@ -13,7 +13,7 @@ because it's lightweight and blows up if you aren't careful.
 
 ### Usage
 
-The `build.py` script provides some predefined build tasks. Run it without
+The `build` script provides some predefined build tasks. Run it without
 arguments to get a list.
 
 ## Related

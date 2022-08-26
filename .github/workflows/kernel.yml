@@ -15,4 +15,4 @@ jobs:
         with:
           submodules: true
       - name: Run checks
-        run: python3 scripts/build.py check
+        run: python3 scripts/build check

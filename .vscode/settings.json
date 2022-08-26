@@ -6,4 +6,5 @@
         "halogen/proc-macro/Cargo.toml",
     ],
     "python.formatting.provider": "black",
+    "debug.allowBreakpointsEverywhere": true
 }
