@@ -3,7 +3,6 @@
 import json
 import subprocess
 import os
-import re
 import sys
 from typing import List, Optional, Tuple
 import multiprocessing
@@ -11,7 +10,12 @@ import multiprocessing
 JOB_COUNT = multiprocessing.cpu_count()
 
 
-def step(in_dir: str, cmd: List[str], capture=False) -> Optional[Tuple[str, str]]:
+def fail(msg: str):
+        print(msg, file=sys.stderr)
+        sys.exit(1)
+
+
+def step(in_dir: str, cmd: List[str], capture=False) -> Optional[Tuple[bytes, bytes]]:
     try:
         cwd = os.getcwd()
         os.chdir(in_dir)
@@ -25,8 +29,7 @@ def step(in_dir: str, cmd: List[str], capture=False) -> Optional[Tuple[str, str]
             subprocess.check_call(cmd)
             os.chdir(cwd)
     except subprocess.CalledProcessError:
-        print("\nError: {} ({})".format(" ".join(cmd), in_dir))
-        sys.exit(1)
+        fail("\nERROR: {} ({})".format(" ".join(cmd), in_dir))
 
 
 TASKS = {}
@@ -55,7 +58,7 @@ def main():
         print("build.py <task> <task> ...", file=sys.stderr)
         print("Tasks: {}".format(", ".join(TASKS.keys())), file=sys.stderr)
 
-    elif len(sys.argv[1:]) == 0:
+    elif len(sys.argv[1:]) == 0 and DEFAULT_TASK:
         DEFAULT_TASK()
 
     else:
@@ -64,8 +67,7 @@ def main():
             if task:
                 task()
             else:
-                print(f"Task '{arg}' undefined.")
-                sys.exit(1)
+                fail(f"task '{arg}' is undefined")
 
 
 ######## TASK DEFINITIONS ########
@@ -123,7 +125,7 @@ def qemu(bios: str, kernel: str, debug: bool = False):
     ]
 
     if debug:
-        args = "-S -s " + args
+        args = ["-S", "-s"] + args
 
     cmd = [QEMU] + args
     print(" ".join(cmd))
@@ -160,11 +162,14 @@ def test(debug: bool = False):
     this hacky Python build system exists.
     """
     step(".", ["mkdir", "-p", BUILD_DIR])
-    (output, _) = step(
+    cmd_res = step(
         KERNEL,
         ["cargo", "test", "--no-run", "--message-format=json"],
         capture=True,
     )
+    if not cmd_res:
+        fail("could not parse test build output")
+    (output, _) = cmd_res
     executable = [
         x["executable"]
         for x in [json.loads(line) for line in output.splitlines()]
