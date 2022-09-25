@@ -14,6 +14,12 @@ because it's lightweight and blows up if you aren't careful.
 
 ### Usage
 
+Create the env file and edit if necessary.
+
+```bash
+$ cp .env.example .env
+```
+
 Build a recipe with the `just` command.
 
 ```bash

@@ -1,3 +1,4 @@
+set dotenv-load
 set shell             := ["/usr/bin/env", "bash", "-c"]
 
 rustc_target          := "riscv64gc-unknown-none-elf"
@@ -50,4 +51,5 @@ clean:
     for crate in {{kernel_crate_dir}} {{common_crate_dir}} {{proc_macro_crate_dir}}; do \
         (cd "$crate" && cargo clean) \
     done
-    rm -rf {{build_dir}}
+    rm -f {{debug_build_elf}}
+    rm -f {{debug_build_bin}}
