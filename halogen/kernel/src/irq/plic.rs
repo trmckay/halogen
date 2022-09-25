@@ -19,7 +19,6 @@ use crate::{
     },
 };
 
-
 const INT_SOURCE_COUNT: usize = 1024;
 const CONTEXT_COUNT: usize = 15872;
 
