@@ -1,5 +1,6 @@
 **/*.rs.bk
 **/Cargo.lock
+**/build
 **/target
 *.a
 *.app
@@ -28,9 +29,7 @@
 *.x86_64
 .DS_Store
 .env
-.nvimrc
-.nvimrc.lua
+.vimrc.lua
 .vim
 .vimrc
 Desktop.ini
-build

@@ -14,15 +14,13 @@ because it's lightweight and blows up if you aren't careful.
 
 ### Usage
 
-Create a `.env` file to set variables such as your cross-compiler.
-
-```sh
-$ cp .env.example .env
-```
-
 Build a recipe with the `just` command.
 
 ```bash
 $ just --list    # List recipes
 $ just [recipe]  # Build a recipe
 ```
+
+## More documentation
+
+See the [`docs`](./docs/README.md)
