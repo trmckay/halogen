@@ -1,4 +1,4 @@
-use halogen_common::mem::{alloc::SegmentAllocator, VirtualAddress};
+use halogen_lib::mem::{alloc::SegmentAllocator, VirtualAddress};
 use lazy_static::lazy_static;
 use spin::Mutex;
 

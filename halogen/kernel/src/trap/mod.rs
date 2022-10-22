@@ -1,4 +1,4 @@
-use halogen_common::mem::{VirtualAddress, KIB};
+use halogen_lib::mem::{VirtualAddress, KIB};
 
 use crate::{
     arch::Context,

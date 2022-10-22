@@ -10,13 +10,11 @@
 //!
 //! This is the only region guaranteed to be contiguous virtually and
 //! physically, so translation can be done with just a single offset saved
-//! during bootstrap, rather than walking the page-table.
+//! during bootstrap, rather than walking the page table.
 
 use core::slice::from_raw_parts_mut;
 
-use halogen_common::mem::{
-    alloc::FrameAllocator, Address, PhysicalAddress, Segment, VirtualAddress,
-};
+use halogen_lib::mem::{alloc::FrameAllocator, Address, PhysicalAddress, Segment, VirtualAddress};
 use spin::Mutex;
 
 use super::regions::PHYSICAL_BASE;

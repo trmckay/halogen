@@ -1,4 +1,4 @@
-use halogen_common::mem::{Address, PhysicalAddress, Segment};
+use halogen_lib::mem::{Address, PhysicalAddress, Segment};
 
 use crate::{
     io::console::early_println,
@@ -70,7 +70,7 @@ unsafe extern "C" fn entry() -> ! {
     core::arch::asm!(include_str!("entry.s"), options(noreturn));
 }
 
-/// Initialize the root page-table and map the kernel
+/// Initialize the root page table and map the kernel
 #[no_mangle]
 unsafe extern "C" fn enable_paging(_hart_id: usize, _device_tree: *const u8) -> ! {
     riscv::register::stvec::write(

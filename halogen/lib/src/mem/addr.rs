@@ -26,12 +26,29 @@ pub trait Address:
     + core::ops::Sub<usize, Output = Self>
     + From<usize>
     + Into<usize> {
-    /// Convert the address to a pointer to a `T`.
+    /// Convert the address to a pointer.
     fn as_ptr<T>(self) -> *const T;
 
-    /// Convert the address to mutable a pointer to a `T`.
+    /// Convert the address to a mutable pointer.
     fn as_mut_ptr<T>(self) -> *mut T {
         self.as_ptr::<T>() as *mut T
+    }
+
+    /// Convert the address to a reference.
+    ///
+    /// # Safety
+    ///
+    /// Accessing data behind the address is unsafe.
+    unsafe fn as_ref<T>(self) -> Option<&'static T> {
+        self.as_ptr::<T>().as_ref()
+    }
+
+    /// Convert the address to a mutable reference.
+    /// # Safety
+    ///
+    /// Accessing data behind the address is unsafe.
+    unsafe fn as_mut<T>(self) -> Option<&'static mut T> {
+        self.as_mut_ptr::<T>().as_mut()
     }
 
     /// Returns `true` if an address is aligned to a boundary.
@@ -66,6 +83,10 @@ pub trait Address:
     fn is_null(self) -> bool {
         (self.as_ptr() as *const u8).is_null()
     }
+
+    fn null() -> Self {
+        Self::from(0)
+    }
 }
 
 impl Address for usize {
@@ -79,10 +100,6 @@ impl Address for usize {
 pub struct VirtualAddress(pub usize);
 
 impl VirtualAddress {
-    pub fn null() -> VirtualAddress {
-        VirtualAddress(0)
-    }
-
     pub const fn as_phys(self) -> PhysicalAddress {
         PhysicalAddress(self.0)
     }
@@ -93,10 +110,6 @@ impl VirtualAddress {
 pub struct PhysicalAddress(pub usize);
 
 impl PhysicalAddress {
-    pub fn null() -> PhysicalAddress {
-        PhysicalAddress(0)
-    }
-
     pub const fn as_virt(self) -> VirtualAddress {
         VirtualAddress(self.0)
     }

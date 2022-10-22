@@ -7,7 +7,7 @@
 //! on that IRQ, handle the request, mark it as completed, and finally return
 //! from the trap handler.
 
-use halogen_common::mem::{Address, PhysicalAddress, VirtualAddress, KIB};
+use halogen_lib::mem::{Address, PhysicalAddress, VirtualAddress, KIB};
 use lazy_static::lazy_static;
 use spin::Mutex;
 

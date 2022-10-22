@@ -1,6 +1,6 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 
-use halogen_common::mem::{
+use halogen_lib::mem::{
     alloc::{AllocatorStats, FreeListAllocator},
     Segment, VirtualAddress, MIB,
 };

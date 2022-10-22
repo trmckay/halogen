@@ -8,7 +8,7 @@ kernel_crate_name     := "halogen"
 base_dir              := "halogen"
 
 kernel_crate_dir      := base_dir / "kernel"
-common_crate_dir      := base_dir / "common"
+lib_crate_dir         := base_dir / "lib"
 proc_macro_crate_dir  := base_dir / "proc-macro"
 
 debug_cargo_build_elf := kernel_crate_dir / "target" / rustc_target / "debug" / kernel_crate_name
@@ -33,7 +33,7 @@ bin: elf
     ${CROSS_COMPILE}objcopy -O binary {{debug_build_elf}} {{debug_build_bin}}
 
 clippy:
-    for crate in {{kernel_crate_dir}} {{common_crate_dir}} {{proc_macro_crate_dir}}; do \
+    for crate in {{kernel_crate_dir}} {{lib_crate_dir}} {{proc_macro_crate_dir}}; do \
         (cd "$crate" && cargo clippy) \
     done
 
@@ -48,7 +48,7 @@ fmt-check:
 lint: clippy fmt-check
 
 clean:
-    for crate in {{kernel_crate_dir}} {{common_crate_dir}} {{proc_macro_crate_dir}}; do \
+    for crate in {{kernel_crate_dir}} {{lib_crate_dir}} {{proc_macro_crate_dir}}; do \
         (cd "$crate" && cargo clean) \
     done
     rm -f {{debug_build_elf}}

@@ -1,4 +1,4 @@
-use halogen_common::mem::MIB;
+use halogen_lib::mem::MIB;
 
 /// Heap management.
 pub mod heap;

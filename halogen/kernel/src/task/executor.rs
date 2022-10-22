@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::BTreeMap};
 
-use halogen_common::sched::{RoundRobinScheduler, TaskScheduler};
+use halogen_lib::sched::{RoundRobinScheduler, TaskScheduler};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -158,7 +158,7 @@ impl Default for Executor {
             threads: BTreeMap::default(),
             processes: BTreeMap::default(),
             quanta: BTreeMap::default(),
-            scheduler: Box::new(RoundRobinScheduler::default()),
+            scheduler: Box::<RoundRobinScheduler>::default(),
         }
     }
 }

@@ -1,6 +1,6 @@
 //! Physical addresses of memory-mapped I/O.
 
-use halogen_common::mem::PhysicalAddress;
+use halogen_lib::mem::PhysicalAddress;
 
 /// Base address of the UART device.
 pub const UART_BASE: PhysicalAddress = PhysicalAddress(0x1000_0000);

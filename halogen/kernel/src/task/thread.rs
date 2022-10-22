@@ -1,4 +1,4 @@
-use halogen_common::mem::{Segment, VirtualAddress, KIB, MIB};
+use halogen_lib::mem::{Segment, VirtualAddress, KIB, MIB};
 
 use super::{process::Process, yld};
 use crate::{

@@ -1,5 +1,5 @@
 use goblin::elf::Elf;
-use halogen_common::mem::{Address, VirtualAddress};
+use halogen_lib::mem::{Address, VirtualAddress};
 
 use crate::{
     error::{KernelError, KernelResult},

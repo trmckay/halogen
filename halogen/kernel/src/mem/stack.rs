@@ -1,6 +1,6 @@
 //! The `Stack` object is used in trap handlers and kernel threads.
 
-use halogen_common::mem::{alloc::SegmentAllocator, Address, Segment, VirtualAddress};
+use halogen_lib::mem::{alloc::SegmentAllocator, Address, Segment, VirtualAddress};
 use lazy_static::lazy_static;
 use spin::Mutex;
 

@@ -4,8 +4,8 @@
 //! physical regions into virtual space. The exact function depends on which, if
 //! any, addresses are provided.
 
-use halogen_common::{
-    align_up, mask_range,
+use halogen_lib::{
+    align_up, mask,
     mem::{Address, PhysicalAddress, Segment, VirtualAddress, GIB, KIB, MIB},
 };
 use spin::Mutex;
@@ -224,22 +224,11 @@ impl From<Level> for usize {
     }
 }
 
-/// Extract the physical page numbers from a physical address.
-#[inline]
-fn ppn(virt_addr: VirtualAddress, level: Level) -> usize {
-    let virt_addr: usize = virt_addr.into();
-    match level {
-        Level::GigaPage => (virt_addr & mask_range!(55, 30)) >> 30,
-        Level::MegaPage => (virt_addr & mask_range!(29, 21)) >> 21,
-        Level::Page => (virt_addr & mask_range!(20, 12)) >> 12,
-    }
-}
-
 /// Extract the offset bits from a physical address.
 #[inline]
 fn offset(phys_addr: PhysicalAddress) -> usize {
     let phys_addr: usize = phys_addr.into();
-    phys_addr & mask_range!(12, 0)
+    phys_addr & mask!(0, 12)
 }
 
 /// Extract the level-based offset as a mask to add to the address.
@@ -247,9 +236,9 @@ fn offset(phys_addr: PhysicalAddress) -> usize {
 fn offset_mask(virt_addr: VirtualAddress, level: Level) -> usize {
     let virt_addr: usize = virt_addr.into();
     match level {
-        Level::GigaPage => virt_addr & mask_range!(29, 0),
-        Level::MegaPage => virt_addr & mask_range!(20, 0),
-        Level::Page => virt_addr & mask_range!(11, 0),
+        Level::GigaPage => virt_addr & mask!(0, 29),
+        Level::MegaPage => virt_addr & mask!(0, 20),
+        Level::Page => virt_addr & mask!(0, 11),
     }
 }
 
@@ -317,16 +306,16 @@ impl PageTableEntry {
     /// combine w/ the VPN portion of the translated address.
     fn page_number(&self, level: Level) -> usize {
         (match level {
-            Level::GigaPage => self.0 & mask_range!(53, 28),
-            Level::MegaPage => self.0 & mask_range!(53, 19),
-            Level::Page => self.0 & mask_range!(53, 10),
-        } << 2) as usize
+            Level::GigaPage => self.0 & mask!(28, 53),
+            Level::MegaPage => self.0 & mask!(19, 53),
+            Level::Page => self.0 & mask!(10, 53),
+        } << 2)
     }
 
     /// Get a reference to the next level page table.
     fn next_level(&self) -> Option<&'static mut PageTable> {
         unsafe {
-            (((self.0 & mask_range!(53, 10)) << 2).wrapping_add(if PAGING_ENABLED {
+            (((self.0 & mask!(10, 53)) << 2).wrapping_add(if PAGING_ENABLED {
                 virtual_offset() as usize
             } else {
                 0
@@ -435,7 +424,6 @@ impl PageTable {
                 (false, Some(next_level)) => {
                     // We can, so get the next level PT.
                     pt = pt.get_create_next(vpn(virt_addr, curr_level), scope)?;
-
                     curr_level = next_level
                 }
                 // Current level matches the desired level or there are no more levels.
@@ -443,7 +431,6 @@ impl PageTable {
                     // We are at the leaf PT; get the entry and set the address.
                     pt.get(vpn(virt_addr, curr_level))
                         .set_translation(phys_addr, Translation::Leaf(scope, prv, perms));
-
                     return Ok(());
                 }
             }

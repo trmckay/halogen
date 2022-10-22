@@ -7,11 +7,9 @@
     custom_test_frameworks,
     naked_functions,
     fn_align,
-    asm_sym,
     asm_const,
     alloc_error_handler,
     stmt_expr_attributes,
-    is_some_with,
     extern_types
 )]
 #![allow(arithmetic_overflow)]
@@ -28,30 +26,18 @@ core::compile_error!("rv64gc+sv39 is the only supported platform");
 #[cfg(test)]
 mod tests;
 
-/// Entry-point for kernel.
 mod boot;
-/// Panic language-feature.
 mod panic;
 
-/// Architecture state and functionality.
 pub mod arch;
-/// Kernel error type.
 pub mod error;
-/// I/O devices.
 pub mod io;
-/// Interrupt request configuration.
 pub mod irq;
-/// Debug logging over UART.
 pub mod log;
-/// Memory management.
 pub mod mem;
-/// Interfacing with OpenSBI.
 pub mod sbi;
-/// System call definitions.
 pub mod syscall;
-/// Processes and threads.
 pub mod task;
-/// Trap handler.
 pub mod trap;
 
 const LOG_LEVEL: log::Level = log::Level::Trace;
@@ -80,7 +66,7 @@ pub unsafe extern "C" fn kinit() -> ! {
     task::executor::handoff(kmain, 0);
 }
 
-/// Main thread for the kernel.
+// Main thread for the kernel.
 extern "C" fn kmain(_: usize) -> isize {
     #[cfg(test)]
     crate::test_harness();

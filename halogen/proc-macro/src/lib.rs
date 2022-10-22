@@ -4,7 +4,7 @@ use syn::{parse_macro_input, DeriveInput};
 
 /// Derive an `Address` implementation for a struct that wraps `usize`.
 #[proc_macro_derive(Address)]
-pub fn usize_struct_derive_addr(input: TokenStream) -> TokenStream {
+pub fn usize_wrapper_derive_addr(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
 
     quote! {

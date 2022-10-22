@@ -1,4 +1,4 @@
-use halogen_common::{mask_range, mem::VirtualAddress};
+use halogen_lib::{mask, mem::VirtualAddress};
 
 use super::REGISTER_NAMES;
 use crate::{mem::regions::Region, read_csr, read_reg};
@@ -48,9 +48,9 @@ impl core::fmt::Display for Context {
             Region::from(VirtualAddress(self.pc))
         )?;
 
-        let satp_mode = (self.satp & mask_range!(63, 60)) >> 60;
-        let satp_asid = (self.satp & mask_range!(59, 44)) >> 44;
-        let satp_ppn = self.satp & mask_range!(43, 0);
+        let satp_mode = (self.satp & mask!(60, 63)) >> 60;
+        let satp_asid = (self.satp & mask!(44, 59)) >> 44;
+        let satp_ppn = self.satp & mask!(0, 43);
 
         writeln!(
             f,

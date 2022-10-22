@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
 
-use halogen_common::mem::{Address, VirtualAddress};
+use halogen_lib::mem::{Address, VirtualAddress};
 
 use super::console::register_console;
 use crate::mem::{

@@ -1,6 +1,6 @@
 use alloc::{vec, vec::Vec};
 
-use halogen_common::mem::KIB;
+use halogen_lib::mem::KIB;
 
 use crate::mem::heap;
 

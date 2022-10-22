@@ -5,6 +5,8 @@ pub use addr::*;
 /// Data structures to perform memory-allocation.
 pub mod alloc;
 
+pub mod paging;
+
 pub const WORD: usize = 4;
 pub const DWORD: usize = 8;
 pub const KIB: usize = 1024;

@@ -1,7 +1,7 @@
 //! This module describes the kernel address-space layout. They are calculated
 //! based on the constants and static variables (set during boot).
 
-use halogen_common::mem::{Address, PhysicalAddress, Segment, VirtualAddress, GIB};
+use halogen_lib::mem::{Address, PhysicalAddress, Segment, VirtualAddress, GIB};
 
 pub use super::addr_space::AddressSpace;
 use super::paging::PAGE_SIZE;
