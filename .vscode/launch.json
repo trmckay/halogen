@@ -9,9 +9,9 @@
                 "target create ${workspaceFolder}/build/halogen-test.elf"
             ],
             "initCommands": [
-                "gdb-remote localhost:1234",
-            ],
-        },
+                "gdb-remote localhost:1234"
+            ]
+        }
     ],
     "compounds": []
 }

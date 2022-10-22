@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+git stash push --keep-index -q || exit 1
+
+(cd $(git rev-parse --show-toplevel) && just lint)
+err=$?
+
+git stash pop
+
+exit $err

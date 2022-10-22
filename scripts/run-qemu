@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ARGS="-machine ${QEMU_MACHINE=virt} \
+    -cpu rv64 \
+    -m ${QEMU_MEM=512}M \
+    -smp ${QEMU_SMP=1} \
+    -nographic \
+    -serial mon:stdio \
+    -d guest_errors \
+    -d mmu \
+    -d int \
+    -d unimp"
+
+if [[ $# -eq 1 ]]; then
+    ${QEMU=qemu-system-riscv64} $ARGS -kernel "$1"
+elif [[ $# -eq 2 ]]; then
+    ${QEMU=qemu-system-riscv64} $ARGS -bios "$1" -kernel "$2"
+else
+    echo "Usage: $0 [firmware] kernel"
+    exit 1
+fi

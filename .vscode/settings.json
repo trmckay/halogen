@@ -3,7 +3,7 @@
     "rust-analyzer.linkedProjects": [
         "halogen/common/Cargo.toml",
         "halogen/kernel/Cargo.toml",
-        "halogen/proc-macro/Cargo.toml",
+        "halogen/proc-macro/Cargo.toml"
     ],
-    "python.formatting.provider": "black",
+    "python.formatting.provider": "black"
 }

@@ -86,7 +86,7 @@
             "type": "shell",
             "command": "riscv64-unknown-elf-gdb -n -nh -q ${workspaceFolder}/build/halogen-test.elf -ex 'target remote localhost:1234' -ex 'break kinit' -ex 'continue'",
             "dependsOn": "QEMU",
-            "problemMatcher": [],
+            "problemMatcher": []
         },
         {
             "label": "Debug (Docker)",
@@ -95,7 +95,7 @@
             "dependsOn": [
                 "QEMU (Docker)"
             ],
-            "problemMatcher": [],
-        },
+            "problemMatcher": []
+        }
     ]
 }

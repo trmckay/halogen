@@ -4,7 +4,6 @@
 //! physical regions into virtual space. The exact function depends on which, if
 //! any, addresses are provided.
 
-
 use halogen_common::{
     align_up, mask_range,
     mem::{Address, PhysicalAddress, Segment, VirtualAddress, GIB, KIB, MIB},
@@ -588,7 +587,6 @@ pub unsafe fn unmap(segment: Segment<VirtualAddress>) -> KernelResult<()> {
 
     Ok(())
 }
-
 
 /// Translate a virtual address to its physical address + permissions.
 pub fn translate(

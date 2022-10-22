@@ -2,6 +2,6 @@
     "recommendations": [
         "rust-lang.rust-analyzer",
         "bungcip.better-toml",
-        "zhwu95.riscv",
+        "zhwu95.riscv"
     ]
 }

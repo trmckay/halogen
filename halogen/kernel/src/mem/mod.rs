@@ -21,6 +21,5 @@ pub use addr_space::*;
 mod stack;
 pub use stack::*;
 
-
 /// The size of physical memory available to the kernel.
 pub const MEMORY_SIZE: usize = 256 * MIB;

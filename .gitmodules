@@ -1,6 +1,0 @@
-[submodule "opensbi"]
-	path = opensbi
-	url = https://github.com/riscv-software-src/opensbi.git
-[submodule "docker"]
-	path = docker
-	url = https://github.com/trmckay/docker-rust-riscv
