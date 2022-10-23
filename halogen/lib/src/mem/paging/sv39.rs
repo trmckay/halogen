@@ -138,7 +138,8 @@ impl Sv39Entry {
                 // Valid bit is set and no RWX is set, so it's a directory.
                 Permissions::Nothing => {
                     Some(Mapping::Directory(DirectoryMapping::new(
-                        // Directories use the whole physical address; nothing from the virt. addr.
+                        // Directories use the whole physical address; nothing from the virtual
+                        // address.
                         self.phys_page(Level::Leaf),
                         Scope::from(self),
                     )))
@@ -221,23 +222,21 @@ impl Default for Sv39Table {
     }
 }
 
-/// A manager can be used to map and translate addresses. It has a root page
-/// table and can allocate new tables as needed.
-#[derive()]
-pub struct Sv39Manager<F>
-where
-    F: FnMut(usize) -> Option<*mut u8>, {
-    root: Option<*mut Sv39Table>,
-    alloc: F, // TODO: Maybe `global_alloc` can be used here?
+type PageTableAllocator = fn() -> *mut u8;
+
+// Implements the Sv39 paging scheme.
+pub struct Sv39Manager {
+    root: *mut Sv39Table,
+    alloc: PageTableAllocator,
 }
 
-impl<F> Sv39Manager<F>
-where
-    F: FnMut(usize) -> Option<*mut u8>,
-{
-    pub fn new(mut alloc: F) -> Sv39Manager<F> {
-        let root = (alloc)(core::mem::size_of::<Sv39Table>()).map(|p| p as *mut Sv39Table);
-        Sv39Manager { root, alloc }
+impl Sv39Manager {
+    pub fn new(allocator: PageTableAllocator) -> Sv39Manager {
+        let root = (allocator)() as *mut Sv39Table;
+        Sv39Manager {
+            root,
+            alloc: allocator,
+        }
     }
 
     fn map_one(
@@ -248,11 +247,7 @@ where
         owner: Owner,
         scope: Scope,
     ) -> Result<(), PagingError> {
-        let mut curr_pt = unsafe {
-            self.root
-                .and_then(|r| r.as_mut())
-                .ok_or(PagingError::PageTableCorruption)?
-        };
+        let mut curr_pt = unsafe { self.root.as_mut().ok_or(PagingError::PageTableCorruption)? };
 
         let mut curr_level = Level::Root;
 
@@ -266,8 +261,8 @@ where
                 },
                 None => {
                     let next_pt = unsafe {
-                        (self.alloc)(core::mem::size_of::<Sv39Table>())
-                            .and_then(|p| (p as *mut Sv39Table).as_mut())
+                        ((self.alloc)() as *mut Sv39Table)
+                            .as_mut()
                             .ok_or(PagingError::AllocationError)?
                     };
                     curr_pt.0[vpn] = Sv39Entry::from(DirectoryMapping::new(
@@ -293,10 +288,7 @@ where
     }
 }
 
-impl<F> PagingScheme for Sv39Manager<F>
-where
-    F: FnMut(usize) -> Option<*mut u8>,
-{
+impl PagingScheme for Sv39Manager {
     fn map(&mut self, vaddr: VirtualAddress, mapping: LeafMapping) -> Result<(), PagingError> {
         if usize::from(vaddr) % Level::Leaf.size() != 0 {
             return Err(PagingError::MisalignedVirtAddr);
@@ -323,7 +315,7 @@ where
     }
 
     fn translate(&self, vaddr: VirtualAddress) -> Option<LeafMapping> {
-        let mut curr_pt = unsafe { self.root.and_then(|r| r.as_mut())? };
+        let mut curr_pt = unsafe { self.root.as_mut()? };
 
         let mut curr_level = Level::Root;
 
@@ -351,11 +343,22 @@ mod tests {
     }
 
     impl TestAllocator {
-        pub fn alloc(&mut self, _: usize) -> *mut u8 {
+        fn alloc(&mut self) -> *mut u8 {
             self.allocations.push(Sv39Table::default());
             let i = self.allocations.len() - 1;
             core::ptr::addr_of_mut!(self.allocations.as_mut_slice()[i]) as *mut u8
         }
+    }
+
+    static mut TEST_ALLOCATOR: Option<TestAllocator> = None;
+
+    fn test_alloc() -> *mut u8 {
+        unsafe {
+            if TEST_ALLOCATOR.is_none() {
+                TEST_ALLOCATOR = Some(TestAllocator::default())
+            }
+        }
+        unsafe { TEST_ALLOCATOR.as_mut().unwrap().alloc() }
     }
 
     #[test]
@@ -383,10 +386,7 @@ mod tests {
 
     #[test]
     fn map_and_translate() {
-        let mut allocator = TestAllocator::default();
-        let alloc = |size: usize| Some(allocator.alloc(size));
-        let mut mgr = Sv39Manager::new(alloc);
-
+        let mut mgr = Sv39Manager::new(test_alloc);
         let vaddr = VirtualAddress(0x8020_0000);
         let mapping = LeafMapping::new(
             PhysicalAddress(0x1000),
