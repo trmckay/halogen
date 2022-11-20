@@ -214,7 +214,7 @@ impl From<Sv39Entry> for Scope {
 
 #[repr(C, align(4096))]
 #[derive(Debug)]
-struct Sv39Table([Sv39Entry; 512]);
+pub struct Sv39Table([Sv39Entry; 512]);
 
 impl Default for Sv39Table {
     fn default() -> Sv39Table {
@@ -222,7 +222,7 @@ impl Default for Sv39Table {
     }
 }
 
-type PageTableAllocator = fn() -> *mut u8;
+type PageTableAllocator = fn() -> *mut Sv39Table;
 
 // Implements the Sv39 paging scheme.
 pub struct Sv39Manager {
@@ -343,16 +343,16 @@ mod tests {
     }
 
     impl TestAllocator {
-        fn alloc(&mut self) -> *mut u8 {
+        fn alloc(&mut self) -> *mut Sv39Table {
             self.allocations.push(Sv39Table::default());
             let i = self.allocations.len() - 1;
-            core::ptr::addr_of_mut!(self.allocations.as_mut_slice()[i]) as *mut u8
+            core::ptr::addr_of_mut!(self.allocations.as_mut_slice()[i])
         }
     }
 
     static mut TEST_ALLOCATOR: Option<TestAllocator> = None;
 
-    fn test_alloc() -> *mut u8 {
+    fn test_alloc() -> *mut Sv39Table {
         unsafe {
             if TEST_ALLOCATOR.is_none() {
                 TEST_ALLOCATOR = Some(TestAllocator::default())
